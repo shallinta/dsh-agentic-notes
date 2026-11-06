@@ -29,3 +29,16 @@ test('create collision is rejected without overwriting', async () => {
   assert.equal(fs.readFileSync(path.join(root, 'Test', 'same.md'), 'utf8'), '# same\n')
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('delete writes tombstone and create clears it', async () => {
+  const root = tempRoot()
+  const out = await applyAgentOperations(root, [{ op: 'delete', path: 'Test/a.md' }], 'test', null, true)
+  assert.equal(out.errors.length, 0)
+  let manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  assert.ok(manifest.deletedNotes?.['Test/a.md'])
+  const created = await applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'a', body: 'new' }], 'test', null, true)
+  assert.equal(created.errors.length, 0)
+  manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  assert.equal(manifest.deletedNotes?.['Test/a.md'], undefined)
+  fs.rmSync(root, { recursive: true, force: true })
+})
