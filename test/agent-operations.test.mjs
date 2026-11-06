@@ -42,3 +42,16 @@ test('delete writes tombstone and create clears it', async () => {
   assert.equal(manifest.deletedNotes?.['Test/a.md'], undefined)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('concurrent writes serialize and keep both results', async () => {
+  const root = tempRoot()
+  const [a, b] = await Promise.all([
+    applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'one', body: '1' }], 'one', null, true),
+    applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'two', body: '2' }], 'two', null, true),
+  ])
+  assert.equal(a.errors.length, 0)
+  assert.equal(b.errors.length, 0)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'one.md')), true)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'two.md')), true)
+  fs.rmSync(root, { recursive: true, force: true })
+})
