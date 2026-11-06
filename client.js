@@ -3529,7 +3529,16 @@ window.__ModuleLoader__.load({
               else showAgentResult(res)
             } else if (status.status === 'error') {
               try { localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }
-              pushToast({ title: 'Agent 任务失败', body: status.error || status.message || '任务失败' })
+              const args = status.args || {}
+              setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'agent-error'), {
+                id: `agent-error-${Date.now()}`, kind: 'agent-error', type: 'toast', title: 'Agent 任务失败',
+                body: String(status.error || status.message || '任务失败'),
+                options: [{ id: '0', label: '重试' }, { id: '1', label: '复制完整日志' }],
+                actions: [
+                  { id: '0', label: '重试', action: { type: 'retry-agent', instruction: String(args.instruction || ''), context: args.context || { view: 'home' }, images: args.images || [], history: args.history || [] } },
+                  { id: '1', label: '复制完整日志', action: { type: 'copy-agent-log', jobId } },
+                ],
+              }])
             }
           } catch { /* ignore */ }
         }, 1000)

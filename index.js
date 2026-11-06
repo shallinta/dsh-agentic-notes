@@ -4329,6 +4329,7 @@ function publicAgentJob(job) {
     surfaces: job.surfaces || [],
     error: job.error,
     result: job.result,
+    args: job.args || {},
     updatedAt: job.updatedAt,
   }
 }
