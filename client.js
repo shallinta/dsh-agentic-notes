@@ -2201,6 +2201,7 @@ window.__ModuleLoader__.load({
       const [captureHistoryLimit, setCaptureHistoryLimit] = useState(state.settings?.captureHistory || 20)
       const [reactMaxRounds, setReactMaxRounds] = useState(state.settings?.reactMaxRounds || 20)
       const [agentEngine, setAgentEngine] = useState(state.settings?.agentEngine === 'json' ? 'json' : 'native')
+      const [agentShadow, setAgentShadow] = useState(state.settings?.agentShadow === true)
       const [toolResultMaxChars, setToolResultMaxChars] = useState(state.settings?.toolResultMaxChars || 20000)
       const [webFetchMaxChars, setWebFetchMaxChars] = useState(state.settings?.webFetchMaxChars || 16000)
       const [readNoteMaxChars, setReadNoteMaxChars] = useState(state.settings?.readNoteMaxChars || 20000)
@@ -2494,6 +2495,9 @@ window.__ModuleLoader__.load({
             h('option', { value: 'native' }, '原生工具调用（默认，验证中）'),
             h('option', { value: 'json' }, 'JSON ReAct（兼容回退）'))),
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, '原生引擎仍在校验中；切换后新会话生效。'),
+          h(Field, { label: 'Shadow 校验' }, h('label', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
+            h('input', { type: 'checkbox', checked: agentShadow, onChange: (event) => { const next = event.target.checked; setAgentShadow(next); patchSoon({ agentShadow: next }) } }),
+            h('span', { style: { fontSize: 12 } }, '记录 JSON 工具调用与原生 schema 的差异'))),
           h(Field, { label: 'ReAct 最大轮次' }, h('input', {
             type: 'number', min: 1, max: 50, value: reactMaxRounds,
             onChange: (event) => { const next = Number(event.target.value); setReactMaxRounds(next); patchSoon({ reactMaxRounds: next }) },

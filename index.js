@@ -3172,6 +3172,8 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
             } else if (key === 'agentEngine') {
               if (value !== 'json' && value !== 'native') throw new Error('agentEngine 只能是 json 或 native')
               patch[key] = value
+            } else if (key === 'agentShadow') {
+              patch[key] = value === true
             } else if (key === 'reminderVoiceGender') {
               if (!['auto', 'male', 'female'].includes(value)) throw new Error('reminderVoiceGender 只能是 auto、male 或 female')
               patch[key] = value
@@ -4684,6 +4686,7 @@ async function dispatchUnlocked(ctx, op, args) {
       if (typeof args.autoArchive === 'boolean') patch.autoArchive = args.autoArchive
       if (typeof args.showAgentSessions === 'boolean') patch.showAgentSessions = args.showAgentSessions
       if (args.agentEngine === 'json' || args.agentEngine === 'native') patch.agentEngine = args.agentEngine
+      if (typeof args.agentShadow === 'boolean') patch.agentShadow = args.agentShadow
       if (args.calendar === 'single' || args.calendar === 'double') patch.calendar = args.calendar
       if (Number.isFinite(Number(args.trashDays))) patch.trashDays = Math.max(1, Math.min(365, Number(args.trashDays)))
       if (Number.isFinite(Number(args.captureHistory))) patch.captureHistory = Math.max(1, Math.min(50, Math.round(Number(args.captureHistory))))
