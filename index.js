@@ -5399,3 +5399,5 @@ async function dispatchUnlocked(ctx, op, args) {
       throw new Error(`未知操作：${op}`)
   }
 }
+
+export { applyAgentOperations };
