@@ -5098,6 +5098,16 @@ async function dispatchUnlocked(ctx, op, args) {
       }
       return { ok: true, closed: surface.id }
     }
+    case 'agent.pending.list': {
+      const dir = pendingDir(root)
+      if (!fs.existsSync(dir)) return { items: [] }
+      const items = fs.readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => {
+        const data = readJson(path.join(dir, name), null)
+        if (!data || data.status !== 'waiting') return null
+        return { id: data.id || name.replace(/\.json$/, ''), source: data.source || 'agent', brief: data.brief || '', summary: data.summary || [], createdAt: data.createdAt || data.at || '' }
+      }).filter(Boolean).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+      return { items }
+    }
     case 'review.surface': {
       const pendingId = String(args.id || '')
       const pending = readJson(path.join(pendingDir(root), `${pendingId}.json`), null)

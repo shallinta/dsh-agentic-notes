@@ -2192,7 +2192,8 @@ window.__ModuleLoader__.load({
         children)
     }
 
-    function SettingsModal({ state, onClose, ctx, pushToast, refresh, onRootChanged }) {
+    function SettingsModal({ state, onClose, ctx, pushToast, refresh, onRootChanged, onReviewPending }) {
+      const [pendingProposals, setPendingProposals] = useState([])
       const [autoArchive, setAutoArchive] = useState(state.settings?.autoArchive !== false)
       const [showAgentSessions, setShowAgentSessions] = useState(state.settings?.showAgentSessions === true)
       const [calendar, setCalendar] = useState(state.settings?.calendar || 'double')
@@ -2215,6 +2216,7 @@ window.__ModuleLoader__.load({
       const [reminderSpeechVolume, setReminderSpeechVolume] = useState(state.settings?.reminderSpeechVolume || 100)
       const [stickyTransparency, setStickyTransparency] = useState(state.settings?.stickyTransparency ?? (Number.isFinite(Number(state.settings?.stickyOpacity)) ? 100 - Number(state.settings.stickyOpacity) : 55))
       const [todoTransparency, setTodoTransparency] = useState(state.settings?.todoTransparency ?? 36)
+      useEffect(() => { api('agent.pending.list').then(({ items }) => setPendingProposals(items || [])).catch(() => { }) }, [])
       const [notificationPermission, setNotificationPermission] = useState(() => typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
       const [provider, setProvider] = useState(state.settings?.model?.provider || '')
       const [model, setModel] = useState(state.settings?.model?.model || '')
@@ -2483,6 +2485,10 @@ window.__ModuleLoader__.load({
           })),
           h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。')),
 
+        pendingProposals.length ? h(SettingsSection, { title: '外部提案', desc: '其他 MCP 客户端只能提出变更，必须在这里确认。' },
+          ...pendingProposals.slice(0, 5).map((item) => h('div', { key: item.id, style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
+            h('div', { style: { flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, item.brief || `${item.summary?.length || 0} 项改动`),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => { api('review.surface', { id: item.id }).then(({ surface }) => { onReviewPending?.(surface); onClose() }).catch((err) => pushToast({ title: '提案打不开', body: err.message })) } }, '审阅')))) : null,
         h(SettingsSection, { title: '模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
           h(Field, { label: 'Agent 引擎' }, h('select', { value: agentEngine, onChange: (event) => { const next = event.target.value === 'native' ? 'native' : 'json'; setAgentEngine(next); patchSoon({ agentEngine: next }) } },
             h('option', { value: 'native' }, '原生工具调用（默认，验证中）'),
@@ -4096,7 +4102,7 @@ window.__ModuleLoader__.load({
                 }, '继续这个会话') : null,
               ] : h('div', { className: 'dsan-set-hint' }, '选择左侧会话查看轮次')),
           )) : null,
-        settings ? h(SettingsModal, { state, ctx, pushToast, onClose: () => setSettings(false), refresh, onRootChanged: () => { setSurfaces([]); try { localStorage.removeItem('dsan-agent-surfaces'); localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }; go({ kind: 'home' }) } }) : null,
+        settings ? h(SettingsModal, { state, ctx, pushToast, onClose: () => setSettings(false), refresh, onReviewPending: (surface) => setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface]), onRootChanged: () => { setSurfaces([]); try { localStorage.removeItem('dsan-agent-surfaces'); localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }; go({ kind: 'home' }) } }) : null,
         diarySettings ? h(DiaryCoverModal, { state, pushToast, refresh, onClose: () => setDiarySettings(false) }) : null,
 )
     }
