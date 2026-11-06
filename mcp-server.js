@@ -33,6 +33,7 @@ function readNote(rel) {
 const tools = [
   { name: 'list_notebooks', description: '列出笔记本', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'list_notes', description: '列出某个笔记本里的笔记', inputSchema: { type: 'object', properties: { notebook: { type: 'string' } }, required: ['notebook'], additionalProperties: false } },
+  { name: 'search_notes', description: '按关键词搜索笔记标题和正文', inputSchema: { type: 'object', properties: { query: { type: 'string' }, notebook: { type: 'string' } }, required: ['query'], additionalProperties: false } },
   { name: 'read_note', description: '读取一篇笔记', inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'], additionalProperties: false } },
   { name: 'read_todo', description: '读取待办', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'read_stickies', description: '读取便笺', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -41,6 +42,18 @@ const tools = [
 function callTool(name, args) {
   if (name === 'list_notebooks') return { content: [{ type: 'text', text: JSON.stringify(manifest().notebooks || []) }] }
   if (name === 'list_notes') return { content: [{ type: 'text', text: JSON.stringify(listNotes(String(args.notebook || ''))) }] }
+  if (name === 'search_notes') {
+    const query = String(args.query || '').toLowerCase()
+    const notebooks = args.notebook ? [String(args.notebook)] : (manifest().notebooks || []).map((item) => item.name)
+    const hits = []
+    for (const notebook of notebooks) {
+      for (const note of listNotes(notebook)) {
+        const text = readNote(note.path).content
+        if (text.toLowerCase().includes(query)) hits.push({ ...note, excerpt: text.slice(0, 200) })
+      }
+    }
+    return { content: [{ type: 'text', text: JSON.stringify(hits) }] }
+  }
   if (name === 'read_note') return { content: [{ type: 'text', text: readNote(String(args.path || '')).content }] }
   if (name === 'read_todo') return { content: [{ type: 'text', text: JSON.stringify(JSON.parse(fs.readFileSync(path.join(ROOT, 'todo.json'), 'utf8'))) }] }
   if (name === 'read_stickies') return { content: [{ type: 'text', text: JSON.stringify(manifest().stickies || []) }] }

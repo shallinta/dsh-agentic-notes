@@ -17,5 +17,5 @@ test('read-only MCP initialize and tools/list', async () => {
   child.kill()
   fs.rmSync(root, { recursive: true, force: true })
   assert.equal(JSON.parse(lines[0]).result.serverInfo.name, 'suiji-readonly')
-  assert.equal(JSON.parse(lines[1]).result.tools.length, 5)
+  assert.equal(JSON.parse(lines[1]).result.tools.length, 6)
 })
