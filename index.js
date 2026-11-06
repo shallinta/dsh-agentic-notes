@@ -3849,7 +3849,11 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
 }
 
 async function runAgentTurn(ctx, root, manifest, args, job) {
-  if (readConfig().agentEngine !== 'native') return runReactAgent(ctx, root, manifest, args, job)
+  if (readConfig().agentEngine !== 'native') {
+    const result = await runReactAgent(ctx, root, manifest, args, job)
+    if (readConfig().agentShadow) runNativeShadow(ctx, root, readManifest(root), args, job).catch((err) => appendAgentLog(root, job, `shadow 失败：${String(err?.message ?? err)}`))
+    return result
+  }
   try {
     return await runNativeAgent(ctx, root, manifest, args, job)
   } catch (err) {
@@ -3862,6 +3866,34 @@ async function runAgentTurn(ctx, root, manifest, args, job) {
     job.message = '原生引擎失败，已回退 JSON'
     return runReactAgent(ctx, root, manifest, args, job)
   }
+}
+
+async function runNativeShadow(ctx, root, manifest, args, job) {
+  const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
+  const scope = collectAgentContext(root, manifest, context, 12000)
+  const sel = modelSelection(ctx, root)
+  if (!sel) return
+  const readOnly = () => { throw new Error('shadow 模式不可写') }
+  const service = createAgentService({
+    listNotebooks: async () => scope.notebooks,
+    listNotes: async ({ notebook }) => listNoteFiles(root, String(notebook || context.notebook || '')),
+    readNote: async ({ path: notePath }) => ({ content: readNote(root, normalizeAgentRel(notePath)).content }),
+    readTodo: async () => readTodo(root).items,
+    readStickies: async () => readStickies(root, manifest),
+    readSettings: async () => readConfig(),
+    webFetch: async ({ url }) => fetchWebText(String(url || ''), 8000, 30000),
+    createNote: readOnly, writeNote: readOnly, renameNote: readOnly, moveNote: readOnly, deleteNote: readOnly, updateFrontmatter: readOnly,
+    todoAdd: readOnly, todoUpdate: readOnly, todoDelete: readOnly, memoCreate: readOnly, memoUpdate: readOnly, memoDelete: readOnly,
+    settingsUpdate: readOnly, setPrivacy: readOnly, stageOperations: readOnly, applyOperations: readOnly,
+    createSurface: async () => ({ shadow: true }), updateSurface: async () => ({ shadow: true }), closeSurface: async () => ({ shadow: true }),
+  })
+  const result = await runNativeToolLoop({
+    llm: ctx.get('llm'), provider: sel.provider, model: sel.model,
+    messages: [{ role: 'user', content: [{ type: 'text', text: String(args.instruction || '') }] }],
+    system: 'shadow 只读诊断。只调用读取工具，不要写。', tools: nativeAgentToolSchemas,
+    executeTool: createNativeToolExecutor(service), maxRounds: 4, maxToolCalls: 12,
+  })
+  appendAgentLog(root, job, `shadow 完成：text=${String(result.text || '').slice(0, 300)} tools=${result.toolCalls}`)
 }
 
 async function runReactAgent(ctx, root, manifest, args, job) {
