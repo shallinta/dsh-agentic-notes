@@ -3869,6 +3869,7 @@ async function runAgentTurn(ctx, root, manifest, args, job) {
 }
 
 async function runNativeShadow(ctx, root, manifest, args, job) {
+  appendAgentLog(root, job, 'shadow 启动')
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
   const scope = collectAgentContext(root, manifest, context, 12000)
   const sel = modelSelection(ctx, root)
