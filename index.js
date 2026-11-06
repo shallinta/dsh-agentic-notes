@@ -11,7 +11,7 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { execFile, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { runNativeToolLoop } from './native-agent-loop.js'
+import { runNativeToolLoop, validateToolArguments } from './native-agent-loop.js'
 import { nativeAgentToolSchemas, createNativeToolExecutor } from './native-agent-tools.js'
 import { createAgentService } from './agent-service.js'
 
@@ -270,6 +270,7 @@ const DEFAULT_CONFIG = {
   webTimeoutMs: 60000,
   showAgentSessions: false,
   agentEngine: 'native',
+  agentShadow: false,
   agentLogRetentionDays: 7,
   agentLogCleanupIntervalDays: 30,
   systemNotifications: false,
@@ -2066,6 +2067,7 @@ function buildState(root) {
       reactMaxRounds: Math.max(1, Math.min(50, Number(cfg.reactMaxRounds) || 20)),
       showAgentSessions: cfg.showAgentSessions === true,
       agentEngine: cfg.agentEngine === 'json' ? 'json' : 'native',
+      agentShadow: cfg.agentShadow === true,
       toolResultMaxChars: Math.max(1000, Math.min(200000, Number(cfg.toolResultMaxChars) || 20000)),
       webFetchMaxChars: Math.max(1000, Math.min(200000, Number(cfg.webFetchMaxChars) || 16000)),
       readNoteMaxChars: Math.max(1000, Math.min(200000, Number(cfg.readNoteMaxChars) || 20000)),
@@ -4064,6 +4066,10 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         break
       } else if (tool === 'stage_operations' || tool === 'apply_operations' || reactOperation(tool, toolArgs)) {
         if (tool === 'create_note' && !String(toolArgs.body || '').trim()) throw new Error(reactProtocolError('create_note 需要 body；不要用 content 代替 body'))
+        if (readConfig().agentShadow) {
+          const shadowError = validateToolArguments(nativeAgentToolSchemas, tool, toolArgs)
+          if (shadowError) appendAgentLog(root, job, `shadow 参数不一致：${tool} ${shadowError}`)
+        }
         const operations = tool === 'stage_operations' || tool === 'apply_operations'
           ? (Array.isArray(toolArgs.operations) ? toolArgs.operations : [])
           : [reactOperation(tool, toolArgs)].filter(Boolean)

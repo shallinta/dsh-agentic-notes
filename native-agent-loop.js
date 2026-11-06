@@ -82,7 +82,7 @@ async function collectTurn(stream) {
  * @param {number} [options.maxTokens]
  * @param {(state:object) => void} [options.onProgress]
  */
-function validateToolArguments(tools, name, args) {
+export function validateToolArguments(tools, name, args) {
   const tool = (tools || []).find((entry) => entry.name === name)
   if (!tool) return `未知工具：${name}`
   if (!args || typeof args !== 'object' || Array.isArray(args)) return '工具参数必须是对象'
