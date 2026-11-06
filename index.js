@@ -3845,10 +3845,20 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   }
 }
 
-function runAgentTurn(ctx, root, manifest, args, job) {
-  return readConfig().agentEngine === 'native'
-    ? runNativeAgent(ctx, root, manifest, args, job)
-    : runReactAgent(ctx, root, manifest, args, job)
+async function runAgentTurn(ctx, root, manifest, args, job) {
+  if (readConfig().agentEngine !== 'native') return runReactAgent(ctx, root, manifest, args, job)
+  try {
+    return await runNativeAgent(ctx, root, manifest, args, job)
+  } catch (err) {
+    if (job.cancelled || (job.staged || []).length) throw err
+    appendAgentLog(root, job, `原生引擎失败，回退 JSON：${String(err?.message ?? err)}`)
+    job.surfaces = []
+    job.activeSurfaceId = ''
+    job.awaitingSurfaceId = ''
+    job.question = null
+    job.message = '原生引擎失败，已回退 JSON'
+    return runReactAgent(ctx, root, manifest, args, job)
+  }
 }
 
 async function runReactAgent(ctx, root, manifest, args, job) {
