@@ -55,3 +55,15 @@ test('concurrent writes serialize and keep both results', async () => {
   assert.equal(fs.existsSync(path.join(root, 'Test', 'two.md')), true)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('applied create can be undone by run id', async () => {
+  const root = tempRoot()
+  const out = await applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'undo-me', body: 'x' }], 'test', null, true)
+  assert.equal(out.errors.length, 0)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'undo-me.md')), true)
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  const { undoAgentRun } = await import('../index.js')
+  undoAgentRun(root, manifest, out.runId)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'undo-me.md')), false)
+  fs.rmSync(root, { recursive: true, force: true })
+})

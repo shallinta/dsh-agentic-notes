@@ -5429,4 +5429,4 @@ async function dispatchUnlocked(ctx, op, args) {
   }
 }
 
-export { applyAgentOperations };
+export { applyAgentOperations, undoAgentRun };
