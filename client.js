@@ -458,6 +458,7 @@ window.__ModuleLoader__.load({
     }
 
     let liveSurfaces = []
+    let liveRoot = ''
     const liveSurfaceListeners = new Set()
     function publishLiveSurfaces(next) {
       liveSurfaces = next
@@ -480,7 +481,7 @@ window.__ModuleLoader__.load({
     }
     function saveSurfaces(surfaces) {
       try {
-        localStorage.setItem('dsan-agent-surfaces', JSON.stringify((surfaces || []).filter((item) => !unsafeSurface(item) && !['closed', 'answered', 'cancelled', 'expired'].includes(item.status)).map(({ onSurfaceAction, ...rest }) => rest).slice(-8)))
+        localStorage.setItem('dsan-agent-surfaces', JSON.stringify((surfaces || []).filter((item) => !unsafeSurface(item) && !['closed', 'answered', 'cancelled', 'expired'].includes(item.status)).map(({ onSurfaceAction, ...rest }) => ({ ...rest, root: liveRoot })).slice(-8)))
       } catch { /* ignore */ }
     }
     function saveAgentThread(thread) {
@@ -2198,6 +2199,7 @@ window.__ModuleLoader__.load({
       const [trashDays, setTrashDays] = useState(state.settings?.trashDays || 30)
       const [captureHistoryLimit, setCaptureHistoryLimit] = useState(state.settings?.captureHistory || 20)
       const [reactMaxRounds, setReactMaxRounds] = useState(state.settings?.reactMaxRounds || 20)
+      const [agentEngine, setAgentEngine] = useState(state.settings?.agentEngine === 'json' ? 'json' : 'native')
       const [toolResultMaxChars, setToolResultMaxChars] = useState(state.settings?.toolResultMaxChars || 20000)
       const [webFetchMaxChars, setWebFetchMaxChars] = useState(state.settings?.webFetchMaxChars || 16000)
       const [readNoteMaxChars, setReadNoteMaxChars] = useState(state.settings?.readNoteMaxChars || 20000)
@@ -2482,6 +2484,10 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。')),
 
         h(SettingsSection, { title: '模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
+          h(Field, { label: 'Agent 引擎' }, h('select', { value: agentEngine, onChange: (event) => { const next = event.target.value === 'native' ? 'native' : 'json'; setAgentEngine(next); patchSoon({ agentEngine: next }) } },
+            h('option', { value: 'native' }, '原生工具调用（默认，验证中）'),
+            h('option', { value: 'json' }, 'JSON ReAct（兼容回退）'))),
+          h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, '原生引擎仍在校验中；切换后新会话生效。'),
           h(Field, { label: 'ReAct 最大轮次' }, h('input', {
             type: 'number', min: 1, max: 50, value: reactMaxRounds,
             onChange: (event) => { const next = Number(event.target.value); setReactMaxRounds(next); patchSoon({ reactMaxRounds: next }) },
@@ -2868,6 +2874,11 @@ window.__ModuleLoader__.load({
       useEffect(() => { saveToasts(toasts) }, [toasts])
       useEffect(() => { saveAgentThread(agentThread) }, [agentThread])
       useEffect(() => { saveSurfaces(surfaces) }, [surfaces])
+      useEffect(() => {
+        if (!state?.root) return
+        liveRoot = state.root
+        setSurfaces((prev) => prev.filter((item) => !item.root || item.root === liveRoot))
+      }, [state?.root])
       useEffect(() => {
         const timer = setInterval(() => setSurfaces((prev) => prev.filter((item) => !item.expiresAt || item.expiresAt > Date.now())), 60000)
         return () => clearInterval(timer)
@@ -4076,7 +4087,7 @@ window.__ModuleLoader__.load({
                 }, '继续这个会话') : null,
               ] : h('div', { className: 'dsan-set-hint' }, '选择左侧会话查看轮次')),
           )) : null,
-        settings ? h(SettingsModal, { state, ctx, pushToast, onClose: () => setSettings(false), refresh, onRootChanged: () => go({ kind: 'home' }) }) : null,
+        settings ? h(SettingsModal, { state, ctx, pushToast, onClose: () => setSettings(false), refresh, onRootChanged: () => { setSurfaces([]); try { localStorage.removeItem('dsan-agent-surfaces'); localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }; go({ kind: 'home' }) } }) : null,
         diarySettings ? h(DiaryCoverModal, { state, pushToast, refresh, onClose: () => setDiarySettings(false) }) : null,
 )
     }

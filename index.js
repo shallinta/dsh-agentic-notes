@@ -11,6 +11,9 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { execFile, execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { runNativeToolLoop } from './native-agent-loop.js'
+import { nativeAgentToolSchemas, createNativeToolExecutor } from './native-agent-tools.js'
+import { createAgentService } from './agent-service.js'
 
 export const inject = ['webServer', 'connection']
 
@@ -73,7 +76,7 @@ function loadAgentSessionByJob(root, jobId) {
         id: data.jobId, sessionId: data.id, status: data.status || 'waiting',
         phase: data.phase || 'surface', message: '等待用户回答', round: data.round || 0,
         total: 0, error: '', result: null, cancelled: false, args: data.args || {},
-        history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], logPath: data.logPath || '',
+        history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], staged: data.staged || [], messages: data.messages || [], logPath: data.logPath || '',
         createdAt: data.updatedAt, updatedAt: nowIso(),
       }
       for (const surface of job.surfaces) agentSurfaces.set(surface.id, surface)
@@ -95,7 +98,7 @@ function saveAgentSession(root, job) {
     fs.mkdirSync(dir, { recursive: true })
     writeJson(path.join(dir, `${job.sessionId}.json`), {
       id: job.sessionId, jobId: job.id, status: job.status, phase: job.phase,
-      args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], logPath: job.logPath || '',
+      args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], staged: job.staged || [], messages: job.messages || [], logPath: job.logPath || '',
       round: job.round || 0, updatedAt: nowIso(),
     })
   } catch { /* best effort */ }
@@ -266,6 +269,7 @@ const DEFAULT_CONFIG = {
   readNoteMaxChars: 20000,
   webTimeoutMs: 60000,
   showAgentSessions: false,
+  agentEngine: 'native',
   agentLogRetentionDays: 7,
   agentLogCleanupIntervalDays: 30,
   systemNotifications: false,
@@ -1490,6 +1494,7 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
     }
     const isNewNote = !noteFile
     if (isNewNote) noteFile = `${notebook}/${safeName(wantedTitle || '新笔记')}.md`
+    if (current.deletedNotes?.[noteFile]) throw new Error('目标笔记已删除，不能再用旧归档重建')
     let result
     if (Array.isArray(plan.bullets) && plan.bullets.length) {
       result = { bullet: plan.bullets.map(String).join(' '), tags: Array.isArray(plan.tags) ? plan.tags : [], summary: String(plan.summary || ''), needsRewrite: false, anchor: '' }
@@ -2060,6 +2065,7 @@ function buildState(root) {
       captureHistory: Math.max(1, Math.min(50, Number(cfg.captureHistory) || 20)),
       reactMaxRounds: Math.max(1, Math.min(50, Number(cfg.reactMaxRounds) || 20)),
       showAgentSessions: cfg.showAgentSessions === true,
+      agentEngine: cfg.agentEngine === 'json' ? 'json' : 'native',
       toolResultMaxChars: Math.max(1000, Math.min(200000, Number(cfg.toolResultMaxChars) || 20000)),
       webFetchMaxChars: Math.max(1000, Math.min(200000, Number(cfg.webFetchMaxChars) || 16000)),
       readNoteMaxChars: Math.max(1000, Math.min(200000, Number(cfg.readNoteMaxChars) || 20000)),
@@ -2978,6 +2984,7 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
               throw new Error(`改写会移除图片引用：${removed.join('、')}。请保留引用；如果用户已明确确认删除，请在 write 里设置 allowImageRemoval:true`)
             }
           }
+          if (currentManifest.deletedNotes) delete currentManifest.deletedNotes[rel]
           backupAgentFile(root, rel)
           fs.mkdirSync(path.dirname(abs), { recursive: true })
           fs.writeFileSync(abs, String(op.content || ''))
@@ -2989,6 +2996,7 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
           const desiredRel = `${safeName(notebook || '', '')}/${safeName(op.title || '新笔记')}.md`
           if (fs.existsSync(absPath(root, desiredRel))) throw new Error(`同名笔记已存在：${desiredRel}`)
           const rel = createNoteFile(root, notebook, op.title || '新笔记', String(op.body || ''))
+          if (currentManifest.deletedNotes) delete currentManifest.deletedNotes[rel]
           if (Array.isArray(op.tags) && op.tags.length || op.summary) {
             const created = readNote(root, rel)
             const data = { ...(created.frontmatter || {}) }
@@ -3007,6 +3015,7 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
           if (fs.existsSync(abs)) {
             moveToTrash(root, abs, path.basename(abs))
             removeNoteOrderPath(currentManifest, rel)
+            currentManifest.deletedNotes = { ...(currentManifest.deletedNotes || {}), [rel]: nowIso() }
             appliedLocal.push({ op: 'delete', path: rel })
           }
         } else if (kind === 'move') {
@@ -3159,6 +3168,9 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
               const n = Number(value)
               if (!Number.isFinite(n)) throw new Error(`${key} 需要数字`)
               patch[key] = key === 'webTimeoutMs' ? Math.max(1000, Math.min(300000, Math.round(n))) : Math.max(1000, Math.min(200000, Math.round(n)))
+            } else if (key === 'agentEngine') {
+              if (value !== 'json' && value !== 'native') throw new Error('agentEngine 只能是 json 或 native')
+              patch[key] = value
             } else if (key === 'reminderVoiceGender') {
               if (!['auto', 'male', 'female'].includes(value)) throw new Error('reminderVoiceGender 只能是 auto、male 或 female')
               patch[key] = value
@@ -3681,12 +3693,171 @@ function reactProtocolError(reason) {
   ].join('\n')
 }
 
+async function runNativeAgent(ctx, root, manifest, args, job) {
+  const instruction = String(args.instruction || '').trim()
+  const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
+  const scope = collectAgentContext(root, manifest, context, 40000)
+  const sel = modelSelection(ctx, root)
+  if (!sel) throw new Error('没有可用的默认模型')
+  const staged = Array.isArray(job.staged) ? job.staged : []
+  job.staged = staged
+  const createdPaths = new Set()
+  const stage = (operation) => {
+    assertAgentScope(context, [operation], createdPaths)
+    if (operation.op === 'create') createdPaths.add(`${safeName(operation.notebook || '', '')}/${safeName(operation.title || '新笔记')}.md`)
+    staged.push(operation)
+    return { staged: true, count: staged.length }
+  }
+  const service = createAgentService({
+    listNotebooks: async () => scope.notebooks,
+    listNotes: async ({ notebook }) => listNoteFiles(root, String(notebook || context.notebook || '')),
+    readNote: async ({ path: notePath }) => {
+      const rel = normalizeAgentRel(notePath)
+      if (context.view === 'note' && rel !== normalizeAgentRel(context.path)) throw new Error('当前打开的是单篇笔记，只能读取这一篇')
+      return { path: rel, content: readNote(root, rel).content }
+    },
+    readTodo: async () => readTodo(root).items,
+    readStickies: async () => readStickies(root, manifest),
+    readSettings: async () => readConfig(),
+    webFetch: async ({ url }) => fetchWebText(String(url || ''), Number(readConfig().webFetchMaxChars) || 16000, Number(readConfig().webTimeoutMs) || 60000),
+    createNote: async (a) => stage({ op: 'create', notebook: a.notebook, title: a.title, body: a.body }),
+    writeNote: async (a) => stage({ op: 'write', path: a.path, content: a.content }),
+    renameNote: async (a) => stage({ op: 'rename', path: a.path, title: a.title }),
+    moveNote: async (a) => stage({ op: 'move', path: a.path, notebook: a.notebook, title: a.title }),
+    deleteNote: async (a) => stage({ op: 'delete', path: a.path }),
+    updateFrontmatter: async (a) => stage({ op: 'frontmatter', path: a.path, set: a.set, unset: a.unset }),
+    todoAdd: async (a) => stage({ op: 'todoAdd', text: a.text, tags: a.tags }),
+    todoUpdate: async (a) => stage({ op: 'todoUpdate', id: a.id, text: a.text, tags: a.tags, done: a.done }),
+    todoDelete: async (a) => stage({ op: 'todoDelete', id: a.id }),
+    memoCreate: async (a) => stage({ op: 'memoCreate', items: a.items, color: a.color }),
+    memoUpdate: async (a) => stage({ op: 'memoUpdate', id: a.id, items: a.items, color: a.color }),
+    memoDelete: async (a) => stage({ op: 'memoDelete', id: a.id }),
+    settingsUpdate: async (a) => stage({ op: 'settingsUpdate', set: a.set }),
+    setPrivacy: async (a) => stage({ op: 'setPrivacyMode', enabled: a.enabled }),
+    stageOperations: async ({ operations }) => {
+      const list = Array.isArray(operations) ? operations : []
+      assertAgentScope(context, list, createdPaths)
+      staged.push(...list)
+      for (const op of list) if (op.op === 'create') createdPaths.add(`${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`)
+      return { staged: true, count: staged.length }
+    },
+    applyOperations: async ({ operations }) => {
+      const list = Array.isArray(operations) ? operations : []
+      assertAgentScope(context, list, createdPaths)
+      staged.push(...list)
+      return { staged: true, count: staged.length, note: '操作已暂存，确认后才会落盘' }
+    },
+    createSurface: async (a) => {
+      const surface = {
+        id: crypto.randomUUID(), jobId: job.id, sessionId: job.sessionId,
+        kind: String(a.kind || 'question'), type: a.type === 'modal' ? 'modal' : 'toast',
+        title: String(a.title || ''), body: String(a.body || ''),
+        options: normalizeReactOptions(a.options), allowFreeText: a.allowFreeText === true,
+        awaitResponse: a.awaitResponse === true, status: 'waiting', createdAt: nowIso(), updatedAt: nowIso(),
+      }
+      job.surfaces = [...(job.surfaces || []), surface]
+      agentSurfaces.set(surface.id, surface)
+      job.activeSurfaceId = surface.id
+      return surface.awaitResponse ? { surfaceId: surface.id, stopTurn: true, awaiting: true } : { surfaceId: surface.id }
+    },
+    updateSurface: async (a) => {
+      const surface = findAgentSurface(a.surfaceId)
+      if (!surface || surface.jobId !== job.id) throw new Error('找不到这个提示组件')
+      if (a.title !== undefined) surface.title = String(a.title)
+      if (a.body !== undefined) surface.body = String(a.body)
+      if (a.kind) surface.kind = String(a.kind)
+      if (Array.isArray(a.options)) surface.options = normalizeReactOptions(a.options)
+      surface.updatedAt = nowIso()
+      return { ok: true }
+    },
+    closeSurface: async (a) => {
+      const surface = findAgentSurface(a.surfaceId)
+      if (!surface || surface.jobId !== job.id) throw new Error('找不到这个提示组件')
+      surface.status = 'closed'; surface.updatedAt = nowIso()
+      job.surfaces = (job.surfaces || []).filter((item) => item.id !== surface.id)
+      return { closed: surface.id }
+    },
+  })
+  try {
+    let messages = Array.isArray(job.messages) ? job.messages : null
+    if (!messages) {
+      const content = [{ type: 'text', text: instruction }]
+      const imagePaths = validCaptureImages(root, args.images)
+      if (imagePaths.length) {
+        try {
+          const attachments = ctx.get('attachments')
+          const llm = ctx.get('llm')
+          let supportsImages = false
+          if (attachments?.saveImages && llm?.resolveModelInfo) {
+            const info = await llm.resolveModelInfo(sel.provider, sel.model)
+            supportsImages = Array.isArray(info?.inputModalities) && info.inputModalities.includes('image')
+          }
+          if (supportsImages) {
+            const images = loadUploadImages(root, imagePaths)
+            const refs = await attachments.saveImages(images.map((image) => ({ data: image.data, mediaType: image.mediaType, name: image.name })))
+            content.push(...refs.map((attachment) => ({ type: 'image', attachment })))
+          }
+        } catch { /* ignore images */ }
+      }
+      messages = [{ role: 'user', content }]
+    }
+    const result = await runNativeToolLoop({
+      llm: ctx.get('llm'), provider: sel.provider, model: sel.model,
+      messages, system: '你是随记的笔记代理。使用工具读写笔记；写入必须先暂存，等待用户确认。完成后调用 finish。',
+      tools: nativeAgentToolSchemas, executeTool: createNativeToolExecutor(service),
+      maxRounds: Math.max(1, Math.min(50, Number(readConfig().reactMaxRounds) || 20)),
+      maxToolCalls: 60, isCancelled: () => job.cancelled,
+    })
+    job.messages = result.messages
+    if (result.waiting) {
+      const surface = agentSurfaces.get(result.surfaceId) || (job.surfaces || []).find((item) => item.id === result.surfaceId)
+      job.surfaces = (job.surfaces || []).map((item) => item.kind === 'progress' ? { ...item, status: 'closed' } : item)
+      job.status = 'waiting'; job.phase = 'surface'; job.message = '等待你的回复'
+      job.activeSurfaceId = result.surfaceId
+      job.awaitingSurfaceId = result.surfaceId
+      job.question = surface ? { id: surface.id, question: surface.body, options: surface.options, type: surface.type, title: surface.title, surfaceId: surface.id, allowFreeText: surface.allowFreeText } : null
+      saveAgentSession(root, job)
+      return
+    }
+    job.surfaces = (job.surfaces || []).map((surface) => surface.kind === 'progress' ? { ...surface, status: 'closed' } : surface)
+    job.message = '处理完成'
+    if (staged.length) {
+      const latest = readManifest(root)
+      const summary = summarizeOperations(staged)
+      const id = crypto.randomUUID()
+      const pending = {
+        id, at: nowIso(), instruction, reply: result.text,
+        brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}`,
+        scale: 'large', summary, signature: stateSignature(root, latest), operations: staged,
+      }
+      writeJson(path.join(pendingDir(root), `${id}.json`), pending)
+      job.staged = []
+      job.status = 'done'
+      job.result = { reply: result.text, applied: [], errors: [], runId: null, pendingId: id, brief: pending.brief, summary, files: [] }
+    } else {
+      job.status = 'done'
+      job.result = { reply: result.text, applied: [], errors: [], runId: null, files: [] }
+    }
+    saveAgentSession(root, job)
+  } catch (err) {
+    appendAgentLog(root, job, `native loop 失败：${String(err?.stack || err)}`)
+    throw err
+  }
+}
+
+function runAgentTurn(ctx, root, manifest, args, job) {
+  return readConfig().agentEngine === 'native'
+    ? runNativeAgent(ctx, root, manifest, args, job)
+    : runReactAgent(ctx, root, manifest, args, job)
+}
+
 async function runReactAgent(ctx, root, manifest, args, job) {
   const instruction = String(args.instruction || '').trim()
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
   const scope = collectAgentContext(root, manifest, context, 40000)
   const baseSignature = stateSignature(root, readManifest(root))
-  const staged = []
+  const staged = Array.isArray(job.staged) ? job.staged : []
+  job.staged = staged
   const applied = []
   const createdPaths = new Set()
   let transaction = false
@@ -3742,6 +3913,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         }
       } else throw err
     }
+    if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true })
     if (!action) {
       try {
         action = parseJsonReply(raw)
@@ -3805,7 +3977,9 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         const projected = notes.filter((note) => !staged.some((op) => op.op === 'delete' && op.path === note.path))
         observation = JSON.stringify(projected)
       } else if (tool === 'read_note') {
-        observation = JSON.stringify(projectedReactNote(root, String(toolArgs.path || ''), staged).content.slice(0, Math.max(1000, Number(readConfig().readNoteMaxChars) || 20000)))
+        const readPath = normalizeAgentRel(toolArgs.path)
+        if (context.view === 'note' && readPath !== normalizeAgentRel(context.path)) throw new Error('当前打开的是单篇笔记，只能读取这一篇')
+        observation = JSON.stringify(projectedReactNote(root, readPath, staged).content.slice(0, Math.max(1000, Number(readConfig().readNoteMaxChars) || 20000)))
       }
       else if (tool === 'read_todo') observation = JSON.stringify(projectedReactTodo(root, staged))
       else if (tool === 'read_stickies') observation = JSON.stringify(projectedReactStickies(root, manifest, staged))
@@ -3884,14 +4058,20 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         const operations = tool === 'stage_operations' || tool === 'apply_operations'
           ? (Array.isArray(toolArgs.operations) ? toolArgs.operations : [])
           : [reactOperation(tool, toolArgs)].filter(Boolean)
+        for (const op of operations) if (op.op === 'create') {
+          const desired = `${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`
+          if (fs.existsSync(absPath(root, desired))) throw new Error(`同名笔记已存在：${desired}`)
+        }
         assertAgentScope(context, operations, createdPaths)
-        const destructive = operations.some((op) => ['delete', 'deleteNotebook', 'fileDelete', 'renameNotebook', 'move'].includes(op.op))
+        const destructive = operations.some((op) => ['delete', 'deleteNotebook', 'fileDelete', 'renameNotebook', 'rename', 'move'].includes(op.op))
         if (tool === 'stage_operations' || tool === 'apply_operations' || transaction || destructive) {
           staged.push(...operations)
           observation = `已暂存 ${operations.length} 个操作${destructive ? '（需要确认）' : ''}，确认后才会落盘`
         } else {
-          const out = await applyAgentOperations(root, operations, instruction)
+          const beforeSignature = stateSignature(root, readManifest(root))
+          const out = await applyAgentOperations(root, operations, instruction, beforeSignature)
           applied.push(...(out.applied || []))
+          if (out.errors?.length) throw new Error(`部分操作失败：${out.errors.join('；')}`)
           for (const item of out.applied || []) if (item.op === 'create' && item.path) createdPaths.add(item.path)
           observation = JSON.stringify(out)
         }
@@ -3964,6 +4144,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
       signature: baseSignature, operations: staged,
     }
     writeJson(path.join(pendingDir(root), `${id}.json`), pending)
+    job.staged = []
     job.status = 'done'; job.result = { reply, applied, errors: [], runId: null, pendingId: id, brief: pending.brief, summary: pending.summary, files: [] }
   } else {
     job.status = 'done'; job.result = { reply, applied, errors: [], runId: null, files: [] }
@@ -4385,7 +4566,7 @@ function enqueueRootWrite(root, task) {
 const NON_WRITE_OPS = new Set([
   'state', 'pickRoot', 'models.providers', 'models.list', 'models.info',
   'note.read', 'notebook.notes', 'diary.list', 'diary.doc',
-  'agent.run', 'agent.start', 'agent.status', 'agent.cancelJob', 'agent.confirm',
+  'agent.run', 'agent.start', 'agent.status', 'agent.cancelJob', 'agent.confirm', 'agent.cancel', 'agent.log', 'surface.answer', 'surface.close', 'review.surface',
   'capture.move', 'capture.retryQueue',
 ])
 
@@ -4486,6 +4667,7 @@ async function dispatchUnlocked(ctx, op, args) {
       const patch = {}
       if (typeof args.autoArchive === 'boolean') patch.autoArchive = args.autoArchive
       if (typeof args.showAgentSessions === 'boolean') patch.showAgentSessions = args.showAgentSessions
+      if (args.agentEngine === 'json' || args.agentEngine === 'native') patch.agentEngine = args.agentEngine
       if (args.calendar === 'single' || args.calendar === 'double') patch.calendar = args.calendar
       if (Number.isFinite(Number(args.trashDays))) patch.trashDays = Math.max(1, Math.min(365, Number(args.trashDays)))
       if (Number.isFinite(Number(args.captureHistory))) patch.captureHistory = Math.max(1, Math.min(50, Math.round(Number(args.captureHistory))))
@@ -4683,7 +4865,7 @@ async function dispatchUnlocked(ctx, op, args) {
       agentJobs.set(job.id, job)
       job.turns = []
       saveAgentSession(root, job)
-      runReactAgent(ctx, root, manifest, args, job).catch((err) => { appendAgentLog(root, job, `错误：${String(err?.stack || err?.message || err)}`); job.status = job.cancelled ? 'cancelled' : 'error'; job.error = job.cancelled ? '' : String(err?.message ?? err); job.message = job.error || '已取消'; job.updatedAt = nowIso() })
+      runAgentTurn(ctx, root, manifest, args, job).catch((err) => { appendAgentLog(root, job, `错误：${String(err?.stack || err?.message || err)}`); job.status = job.cancelled ? 'cancelled' : 'error'; job.error = job.cancelled ? '' : String(err?.message ?? err); job.message = job.error || '已取消'; job.updatedAt = nowIso() })
       setTimeout(() => { if (agentJobs.get(job.id)?.status !== 'running') agentJobs.delete(job.id) }, 600000)
       return { jobId: job.id, sessionId: job.sessionId }
     }
@@ -4810,7 +4992,7 @@ async function dispatchUnlocked(ctx, op, args) {
       }
       if (surface.kind === 'confirm') {
         surface.status = 'answered'; surface.answer = answer; surface.updatedAt = nowIso()
-        if (answer.optionId === 'cancel') return { ok: true, outcome: await dispatch(ctx, 'agent.cancel', { id: surface.pendingId }) }
+        if (!['confirm', 'approve'].includes(answer.optionId)) return { ok: true, outcome: await dispatch(ctx, 'agent.cancel', { id: surface.pendingId }) }
         const outcome = await dispatch(ctx, 'agent.confirm', { id: surface.pendingId })
         return { ok: true, outcome }
       }
@@ -4846,7 +5028,8 @@ async function dispatchUnlocked(ctx, op, args) {
       saveAgentSession(root, job)
       job.args = JSON.parse(JSON.stringify(nextArgs))
       job.updatedAt = nowIso()
-      runReactAgent(ctx, root, readManifest(root), nextArgs, job).catch((err) => {
+      if (readConfig().agentEngine === 'native') job.messages = [...(job.messages || []), { role: 'user', content: [{ type: 'text', text: answer.label + (answer.text ? `（${answer.text}）` : '') }] }]
+      runAgentTurn(ctx, root, readManifest(root), nextArgs, job).catch((err) => {
         job.status = job.cancelled ? 'cancelled' : 'error'
         job.error = job.cancelled ? '' : String(err?.message ?? err)
         job.message = job.error || '已取消'
@@ -4869,7 +5052,8 @@ async function dispatchUnlocked(ctx, op, args) {
       job.error = ''; job.result = null; job.question = null; job.awaitingSurfaceId = ''
       job.message = '继续会话'; job.updatedAt = nowIso()
       saveAgentSession(root, job)
-      runReactAgent(ctx, root, readManifest(root), job.args, job).catch((err) => {
+      if (readConfig().agentEngine === 'native') job.messages = [...(job.messages || []), { role: 'user', content: [{ type: 'text', text }] }]
+      runAgentTurn(ctx, root, readManifest(root), job.args, job).catch((err) => {
         job.status = job.cancelled ? 'cancelled' : 'error'
         job.error = job.cancelled ? '' : String(err?.message ?? err)
         job.message = job.error || '已取消'; job.updatedAt = nowIso()
@@ -4910,7 +5094,9 @@ async function dispatchUnlocked(ctx, op, args) {
       const surface = {
         id: crypto.randomUUID(), jobId: '', kind: 'confirm', type: 'modal',
         title: pending.kind === 'capture' ? '确认归档这条记录' : '确认这次改动',
-        body: [pending.brief || '确认后才会写盘', ...(pending.summary || []).map((item) => typeof item === 'string' ? item : formatAgentOperationSummary(item))].filter(Boolean).join('\n'),
+        body: pending.brief && !String(pending.brief).includes('[object Object]')
+          ? pending.brief
+          : (pending.summary || []).map((item) => typeof item === 'string' ? item : formatAgentOperationSummary(item)).join('\n') || '确认后才会写盘',
         options: [{ id: 'confirm', label: '确认执行' }, { id: 'cancel', label: '取消' }],
         actions: [
           { id: 'confirm', label: '确认执行', action: { type: 'confirm', pendingId } },
