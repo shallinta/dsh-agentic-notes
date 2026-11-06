@@ -19,3 +19,19 @@ test('read-only MCP initialize and tools/list', async () => {
   assert.equal(JSON.parse(lines[0]).result.serverInfo.name, 'suiji-readonly')
   assert.equal(JSON.parse(lines[1]).result.tools.length, 6)
 })
+
+test('search_notes finds content inside DSAN_ROOT', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsan-mcp-search-'))
+  fs.mkdirSync(path.join(root, 'A'))
+  fs.writeFileSync(path.join(root, 'A', 'one.md'), '# one\n\nUNIQUE_SEARCH_42\n')
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify({ notebooks: [{ name: 'A' }], stickies: [] }))
+  const child = spawn(process.execPath, ['mcp-server.js'], { env: { ...process.env, DSAN_ROOT: root } })
+  const lines = []
+  child.stdout.on('data', (chunk) => lines.push(...String(chunk).split('\n').filter(Boolean)))
+  child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'search_notes', arguments: { query: 'UNIQUE_SEARCH_42' } } }) + '\n')
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  child.kill()
+  fs.rmSync(root, { recursive: true, force: true })
+  const result = JSON.parse(lines[0]).result
+  assert.match(result.content[0].text, /A\/one\.md/)
+})
