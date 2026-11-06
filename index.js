@@ -5104,6 +5104,10 @@ async function dispatchUnlocked(ctx, op, args) {
       const items = fs.readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => {
         const data = readJson(path.join(dir, name), null)
         if (!data || data.status !== 'waiting') return null
+        if (data.source === 'mcp' && !data.signature) {
+          data.signature = stateSignature(root, readManifest(root))
+          writeJson(path.join(dir, name), data)
+        }
         return { id: data.id || name.replace(/\.json$/, ''), source: data.source || 'agent', brief: data.brief || '', summary: data.summary || [], createdAt: data.createdAt || data.at || '' }
       }).filter(Boolean).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
       return { items }
