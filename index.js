@@ -5127,7 +5127,8 @@ async function dispatchUnlocked(ctx, op, args) {
         const file = path.join(pendingDir(root), `${id}.json`)
         const pending = readJson(file, null)
         if (!pending) throw new Error('找不到待确认的改动')
-        if (stateSignature(root, manifest) !== pending.signature) throw new Error('确认前笔记、待办或便笺已有改动，请重新让 agent 生成方案')
+        if (pending.status && pending.status !== 'waiting') throw new Error('这个提案已经处理，不能重复确认')
+        if (pending.signature && stateSignature(root, manifest) !== pending.signature) throw new Error('确认前笔记、待办或便笺已有改动，请重新让 agent 生成方案')
         if (pending.kind === 'capture') {
           const copied = []
           try {
@@ -5164,7 +5165,10 @@ async function dispatchUnlocked(ctx, op, args) {
                 } catch { /* ignore */ }
               }
             }
-            fs.rmSync(file, { force: true })
+            if (pending.source === 'mcp') {
+              pending.status = 'confirmed'; pending.confirmedAt = nowIso(); pending.result = outcome
+              writeJson(file, pending)
+            } else fs.rmSync(file, { force: true })
             return { ...outcome, reply: pending.reply || '' }
           } catch (err) {
             for (const target of copied) { try { fs.unlinkSync(target) } catch { /* ignore */ } }
