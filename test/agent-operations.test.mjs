@@ -67,3 +67,15 @@ test('applied create can be undone by run id', async () => {
   assert.equal(fs.existsSync(path.join(root, 'Test', 'undo-me.md')), false)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('partial batch reports errors without hiding them', async () => {
+  const root = tempRoot()
+  const out = await applyAgentOperations(root, [
+    { op: 'create', notebook: 'Test', title: 'ok', body: 'ok' },
+    { op: 'delete', path: 'Test/missing.md' },
+  ], 'test', null, true)
+  assert.equal(out.errors.length, 1)
+  assert.match(out.errors[0], /找不到/)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'ok.md')), true)
+  fs.rmSync(root, { recursive: true, force: true })
+})

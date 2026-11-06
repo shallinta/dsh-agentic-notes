@@ -3012,12 +3012,11 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
         } else if (kind === 'delete') {
           const rel = decodeRel(String(op.path || ''))
           const abs = absPath(root, rel)
-          if (fs.existsSync(abs)) {
-            moveToTrash(root, abs, path.basename(abs))
-            removeNoteOrderPath(currentManifest, rel)
-            currentManifest.deletedNotes = { ...(currentManifest.deletedNotes || {}), [rel]: nowIso() }
-            appliedLocal.push({ op: 'delete', path: rel })
-          }
+          if (!fs.existsSync(abs)) throw new Error(`找不到要删除的笔记：${rel}`)
+          moveToTrash(root, abs, path.basename(abs))
+          removeNoteOrderPath(currentManifest, rel)
+          currentManifest.deletedNotes = { ...(currentManifest.deletedNotes || {}), [rel]: nowIso() }
+          appliedLocal.push({ op: 'delete', path: rel })
         } else if (kind === 'move') {
           const imageMoves = []
           const nextPath = moveNoteToNotebook(root, currentManifest, String(op.path || ''), String(op.notebook || ''), op.title ? String(op.title) : '', imageMoves)
