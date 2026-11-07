@@ -3125,7 +3125,8 @@ window.__ModuleLoader__.load({
       const notificationsInitialized = useRef(false)
       const seenNotifications = useRef((() => { try { const list = JSON.parse(sessionStorage.getItem('dsan.seen.notifications') || '[]'); return Array.isArray(list) ? new Set(list) : new Set() } catch { return new Set() } })())
       useEffect(() => {
-        const list = Array.isArray(state?.notifications) ? state.notifications : []
+        if (!Array.isArray(state?.notifications)) return
+        const list = state.notifications
         if (!notificationsInitialized.current) { notificationsInitialized.current = true; for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ }; return }
         let changed = false
         for (const item of list) {
