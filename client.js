@@ -2487,7 +2487,7 @@ window.__ModuleLoader__.load({
           })),
           h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。')),
 
-        h(SettingsSection, { title: 'MCP 连接', desc: '外部 AI 通过该地址调用随记；写入仍是待确认提案。' },
+        h(SettingsSection, { title: 'MCP 连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。' },
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 8, wordBreak: 'break-all' } }, mcpUrl),
           h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
             h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
