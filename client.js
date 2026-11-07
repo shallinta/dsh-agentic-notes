@@ -292,7 +292,6 @@ window.__ModuleLoader__.load({
 .dsan-reminder-stop{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-size:11.5px;padding:4px 9px;border-radius:6px;cursor:pointer}
 .dsan-reminder-stop:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
 .dsan-toasts{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:10px;z-index:80;width:360px;max-width:calc(100vw - 44px)}
-.dsan-toast.top{position:fixed;top:76px;right:22px;bottom:auto;width:360px;max-width:calc(100vw - 44px);z-index:95}
 .dsan-toast{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:12px 13px;position:relative;animation:dsan-in .16s ease-out}
 @keyframes dsan-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .dsan-toast .tt{font-weight:600;font-size:12.5px;padding-right:4px}
@@ -892,7 +891,7 @@ window.__ModuleLoader__.load({
     }
 
     function Toasts({ items, dismiss }) {
-      return h('div', { className: 'dsan-toasts' }, items.map((toast) => h('div', { key: toast.id, className: cls('dsan-toast', toast.placement === 'top' && 'top') },
+      return h('div', { className: 'dsan-toasts' }, items.map((toast) => h('div', { key: toast.id, className: 'dsan-toast' },
         h('div', { className: 'tt' }, toast.title),
         toast.body ? h('div', { className: 'tb' }, toast.body) : null,
         h('div', { className: 'dsan-toast-foot' },
@@ -3809,7 +3808,9 @@ window.__ModuleLoader__.load({
         }
         const finalText = text || '图片记录'
         rememberCapture(raw || finalText)
-        pushToast({ title: '已记到日记', body: '正在归档…', duration: 2500, placement: 'top' })
+        const launchId = `capture-launch-${Date.now()}`
+        setSurfaces((prev) => [...prev, { id: launchId, kind: 'capture-launch', type: 'toast', title: '已记到日记', body: '正在归档…', status: 'waiting' }])
+        setTimeout(() => setSurfaces((prev) => prev.filter((item) => item.id !== launchId)), 5000)
         try {
           const res = await api('capture', { text: finalText, images })
           setCaptureText('')
