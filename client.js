@@ -40,7 +40,7 @@ window.__ModuleLoader__.load({
 .dsan-attachments{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px 0 0}
 .dsan-attachment{position:relative;width:42px;height:42px;margin:0 6px 6px 0;overflow:visible}
 .dsan-attachment img{width:100%;height:100%;object-fit:cover;display:block;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
-.dsan-surface-stack{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:14px;align-items:flex-end;padding:8px;background:transparent;overflow:visible;isolation:isolate}
+.dsan-surface-stack{position:fixed;right:14px;bottom:calc(14px + var(--dsan-toast-height, 0px));z-index:90;display:flex;flex-direction:column;gap:14px;align-items:flex-end;padding:8px;background:transparent;overflow:visible;isolation:isolate}
 .dsan-surface-toast{position:relative;right:auto;bottom:auto;z-index:0;width:360px;max-width:calc(100vw - 44px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 4px 14px -2px rgba(0,0,0,.18);padding:13px}
 .dsan-surface-toast .x{position:absolute;bottom:8px;right:8px;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;border-radius:6px}
 .dsan-progress-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary);margin-top:5px}
@@ -891,7 +891,13 @@ window.__ModuleLoader__.load({
     }
 
     function Toasts({ items, dismiss }) {
-      return h('div', { className: 'dsan-toasts' }, items.map((toast) => h('div', { key: toast.id, className: 'dsan-toast' },
+      const ref = useRef(null)
+      useEffect(() => {
+        const height = ref.current ? ref.current.getBoundingClientRect().height : 0
+        document.documentElement.style.setProperty('--dsan-toast-height', `${height ? height + 14 : 0}px`)
+        return () => { document.documentElement.style.setProperty('--dsan-toast-height', '0px') }
+      }, [items])
+      return h('div', { className: 'dsan-toasts', ref }, items.map((toast) => h('div', { key: toast.id, className: 'dsan-toast' },
         h('div', { className: 'tt' }, toast.title),
         toast.body ? h('div', { className: 'tb' }, toast.body) : null,
         h('div', { className: 'dsan-toast-foot' },
@@ -2943,7 +2949,7 @@ window.__ModuleLoader__.load({
             }).catch(() => { })
             const active = (next.captures || []).find((capture) => capture.status === 'running' || capture.status === 'pending')
             if (active) {
-              setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'capture-progress'), {
+              setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'capture-progress' && item.kind !== 'capture-launch'), {
                 id: `capture-progress-${active.id}`, kind: 'capture-progress', type: 'toast',
                 title: '已存入今天的日记', body: active.job?.message || '正在归档…',
                 captureId: active.id, diaryDoc: active.diaryDoc, date: active.date,
