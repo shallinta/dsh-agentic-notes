@@ -3808,6 +3808,7 @@ window.__ModuleLoader__.load({
         }
         const finalText = text || '图片记录'
         rememberCapture(raw || finalText)
+        pushToast({ title: '已记到日记', body: '正在归档…', duration: 2500 })
         try {
           const res = await api('capture', { text: finalText, images })
           setCaptureText('')

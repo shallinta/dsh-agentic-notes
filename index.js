@@ -1546,6 +1546,7 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
     const tags = Array.isArray(result.tags) ? result.tags.map(String).filter(Boolean).slice(0, 8) : []
     const summary = String(result.summary || '').slice(0, 200)
     let operation
+    let fullRewrite = false
     if (isNewNote) {
       operation = { op: 'create', notebook, title: safeName(wantedTitle || '新笔记'), body: noteBullet, tags, summary }
     } else {
@@ -1556,6 +1557,7 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
       data.updated = nowIso()
       const rewritten = String(result.rewrittenNote || '').trim()
       if (rewritten) {
+        fullRewrite = true
         const body = splitFrontmatter(rewritten).body || rewritten
         operation = { op: 'write', path: noteFile, content: `${buildFrontmatter(data)}${body.replace(/^\n+/, '')}` }
       } else {
@@ -1585,6 +1587,12 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
     saveManifest(root, latest)
     pending.signature = stateSignature(root, latest)
     writeJson(path.join(pendingDir(root), `${pendingId}.json`), pending)
+    const autoApply = !fullRewrite
+    if (autoApply) {
+      try { await dispatch(ctx, 'agent.confirm', { id: pendingId }); return } catch (err) {
+        try { const latest2 = readManifest(root); updateCapture(latest2, id, { error: `自动归档失败：${String(err?.message ?? err)}` }); saveManifest(root, latest2) } catch { /* ignore */ }
+      }
+    }
   } catch (err) {
     current = readManifest(root)
     const latest = findCapture(current, id)
