@@ -42,5 +42,17 @@ test('MCP read_note rejects internal metadata', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsan-mcp-private-'))
   fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify({ notebooks: [{ name: 'A' }], stickies: [] }))
   assert.throws(() => callMcpTool(root, 'read_note', { path: '.dsh-notebooks.json' }), /内部元数据/)
+  assert.throws(() => callMcpTool(root, 'read_note', { path: './.dsh-notebooks.json' }), /内部元数据/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('stale notification lock is recovered', async () => {
+  const { callMcpTool } = await import('../mcp-core.js')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsan-lock-'))
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify({ notebooks: [{ name: 'A' }], stickies: [] }))
+  fs.mkdirSync(path.join(root, '.dsh-notebooks'))
+  fs.writeFileSync(path.join(root, '.dsh-notebooks', 'notifications.lock'), '999999')
+  const out = callMcpTool(root, 'notify', { title: 'after-lock', body: 'ok' })
+  assert.match(out.content[0].text, /ok/)
   fs.rmSync(root, { recursive: true, force: true })
 })

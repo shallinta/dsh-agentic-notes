@@ -3123,22 +3123,30 @@ window.__ModuleLoader__.load({
         if (auto) setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), timeout)
       }, [])
       const notificationsInitialized = useRef(false)
-      const seenNotifications = useRef((() => { try { const list = JSON.parse(sessionStorage.getItem('dsan.seen.notifications') || '[]'); return Array.isArray(list) ? new Set(list) : new Set() } catch { return new Set() } })())
+      const notificationsRoot = useRef('')
+      const seenNotifications = useRef(new Set())
       useEffect(() => {
+        const rootKey = String(state?.root || '')
+        if (notificationsRoot.current !== rootKey) {
+          notificationsRoot.current = rootKey
+          notificationsInitialized.current = false
+          try { const list = JSON.parse(sessionStorage.getItem(`dsan.seen.notifications.${rootKey}`) || '[]'); seenNotifications.current = new Set(Array.isArray(list) ? list : []) } catch { seenNotifications.current = new Set() }
+        }
         if (!Array.isArray(state?.notifications)) return
         const list = state.notifications
-        if (!notificationsInitialized.current) { notificationsInitialized.current = true; for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ }; return }
+        const save = () => { try { sessionStorage.setItem(`dsan.seen.notifications.${rootKey}`, JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ } }
+        if (!notificationsInitialized.current) { notificationsInitialized.current = true; for (const item of list) seenNotifications.current.add(item.id); save(); return }
         let changed = false
         for (const item of list) {
           if (seenNotifications.current.has(item.id)) continue
           seenNotifications.current.add(item.id); changed = true
           pushToast({ id: `notify-${item.id}`, notificationId: item.id, title: item.title || '随记通知', body: item.body || '', duration: 8000 })
         }
-        if (changed) { for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ } }
-      }, [state?.notifications, pushToast])
+        if (changed) save()
+      }, [state?.notifications, state?.root, pushToast])
       useEffect(() => {
         const timer = setInterval(async () => {
-          try { const { items } = await api('notifications'); setState((prev) => prev ? { ...prev, notifications: items || [] } : prev) } catch { /* ignore */ }
+          try { const data = await api('notifications'); setState((prev) => prev && data.root === prev.root ? { ...prev, notifications: data.items || [] } : prev) } catch { /* ignore */ }
         }, 2000)
         return () => clearInterval(timer)
       }, [])

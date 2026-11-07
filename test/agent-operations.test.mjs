@@ -119,3 +119,17 @@ test('failed batch restores moved note and images', async () => {
   assert.equal(fs.existsSync(path.join(root, 'Target', 'a.md')), false)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('MCP concurrent writes with the same expected hash have one winner', async () => {
+  const crypto = await import('node:crypto')
+  const { callHttpMcpTool } = await import('../index.js')
+  const root = tempRoot()
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'Test', 'a.md'))).digest('hex')
+  const results = await Promise.allSettled([
+    callHttpMcpTool(root, 'write_note', { path: 'Test/a.md', content: '# first\n', expectedHash: hash }),
+    callHttpMcpTool(root, 'write_note', { path: 'Test/a.md', content: '# second\n', expectedHash: hash }),
+  ])
+  assert.equal(results.filter((item) => item.status === 'fulfilled').length, 1)
+  assert.equal(results.filter((item) => item.status === 'rejected').length, 1)
+  fs.rmSync(root, { recursive: true, force: true })
+})

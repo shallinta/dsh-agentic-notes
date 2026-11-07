@@ -42,9 +42,16 @@ function withNotifyLock(root, task) {
   fs.mkdirSync(path.dirname(lock), { recursive: true })
   let fd = null
   for (let i = 0; i < 200; i += 1) {
-    try { fd = fs.openSync(lock, 'wx'); break } catch { sleep(5) }
+    try { fd = fs.openSync(lock, 'wx'); break } catch {
+      try {
+        const pid = Number(fs.readFileSync(lock, 'utf8').trim())
+        if (pid > 0) { try { process.kill(pid, 0) } catch { fs.unlinkSync(lock); continue } }
+      } catch { /* lock may have been released */ }
+      sleep(5)
+    }
   }
   if (fd === null) throw new Error('通知队列繁忙')
+  try { fs.writeFileSync(lock, String(process.pid)) } catch { /* ignore */ }
   try { return task() } finally {
     try { fs.closeSync(fd) } catch { /* ignore */ }
     try { fs.unlinkSync(lock) } catch { /* ignore */ }
@@ -68,8 +75,9 @@ function listNotes(root, notebook) {
   return fs.readdirSync(dir).filter((name) => name.endsWith('.md')).map((name) => ({ path: path.join(notebook, name), title: name.replace(/\.md$/i, '') }))
 }
 function readNote(root, rel) {
-  if (rel === META || rel.startsWith('.dsh-notebooks/')) throw new Error('不能读取内部元数据')
-  return { path: rel, content: fs.readFileSync(inside(root, rel), 'utf8') }
+  const clean = path.posix.normalize(String(rel).replace(/^\.\/+/, ''))
+  if (clean === META || clean.startsWith('.dsh-notebooks/')) throw new Error('不能读取内部元数据')
+  return { path: clean, content: fs.readFileSync(inside(root, clean), 'utf8') }
 }
 function validateOperations(root, operations) {
   if (!Array.isArray(operations) || !operations.length) throw new Error('operations 不能为空')

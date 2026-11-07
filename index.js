@@ -3994,14 +3994,15 @@ async function callHttpMcpTool(root, name, args = {}) {
   else if (name === 'memo_update') operation = { op: 'memoUpdate', id: args.id, items: args.items, color: args.color }
   else if (name === 'memo_delete') operation = { op: 'memoDelete', id: args.id }
   else throw new Error(`未知工具：${name}`)
-  if (operation.path && (args.expectedMtime !== undefined || args.expectedHash !== undefined)) {
+  const versionGuard = () => {
+    if (!operation.path || (args.expectedMtime === undefined && args.expectedHash === undefined)) return
     const abs = absPath(root, operation.path)
     if (!fs.existsSync(abs)) throw new Error('目标笔记不存在')
     const stat = fs.statSync(abs)
     if (args.expectedMtime !== undefined && Math.abs(stat.mtimeMs - Number(args.expectedMtime)) > 1) throw new Error('笔记已被修改，请重新读取')
     if (args.expectedHash !== undefined && fileHash(abs) !== String(args.expectedHash)) throw new Error('笔记内容已变化，请重新读取')
   }
-  const out = await applyAgentOperations(root, [operation], 'MCP 外部写入', null, true)
+  const out = await applyAgentOperations(root, [operation], 'MCP 外部写入', null, true, versionGuard)
   if (out.errors?.length) throw new Error(out.errors.join('；'))
   return { content: [{ type: 'text', text: JSON.stringify({ ok: true, applied: out.applied, runId: out.runId }) }] }
 }
@@ -4820,7 +4821,7 @@ async function dispatchUnlocked(ctx, op, args) {
       const root = rootOf()
       if (!root) return { items: [] }
       const items = readJson(path.join(root, META_DIR, 'notifications.json'), [])
-      return { items: Array.isArray(items) ? items.slice(-50) : [] }
+      return { root, items: Array.isArray(items) ? items.slice(-50) : [] }
     }
     case 'state':
       return buildState(root)
@@ -5650,4 +5651,4 @@ async function dispatchUnlocked(ctx, op, args) {
   }
 }
 
-export { applyAgentOperations, undoAgentRun };
+export { applyAgentOperations, undoAgentRun, callHttpMcpTool };
