@@ -5405,6 +5405,7 @@ async function dispatchUnlocked(ctx, op, args) {
     case 'agent.cancel': {
       const file = path.join(pendingDir(root), `${String(args.id || '')}.json`)
       const pending = readJson(file, null)
+      if (pending?.status && pending.status !== 'waiting') throw new Error('提案已处理，不能取消')
       if (pending?.kind === 'capture') {
         const capture = findCapture(manifest, pending.captureId)
         if (capture) {
