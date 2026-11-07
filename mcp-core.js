@@ -4,6 +4,8 @@ import crypto from 'node:crypto'
 
 const META = '.dsh-notebooks.json'
 const PENDING_DIR = '.dsh-notebooks/agent-pending'
+const NOTIFY_FILE = '.dsh-notebooks/notifications.json'
+const NOTIFY_LOCK = '.dsh-notebooks/notifications.lock'
 const OPS = new Set(['write', 'create', 'rename', 'move', 'delete', 'frontmatter', 'todoAdd', 'todoUpdate', 'todoDelete', 'memoCreate', 'memoUpdate', 'memoDelete', 'settingsUpdate', 'setPrivacyMode'])
 
 function manifest(root) {
@@ -34,6 +36,31 @@ function proposal(root, id) {
   if (!fs.existsSync(file)) throw new Error('找不到提案')
   return { file, data: JSON.parse(fs.readFileSync(file, 'utf8')) }
 }
+function sleep(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) }
+function withNotifyLock(root, task) {
+  const lock = path.join(root, NOTIFY_LOCK)
+  fs.mkdirSync(path.dirname(lock), { recursive: true })
+  let fd = null
+  for (let i = 0; i < 200; i += 1) {
+    try { fd = fs.openSync(lock, 'wx'); break } catch { sleep(5) }
+  }
+  if (fd === null) throw new Error('通知队列繁忙')
+  try { return task() } finally {
+    try { fs.closeSync(fd) } catch { /* ignore */ }
+    try { fs.unlinkSync(lock) } catch { /* ignore */ }
+  }
+}
+function readNotifications(root) {
+  try { const list = JSON.parse(fs.readFileSync(path.join(root, NOTIFY_FILE), 'utf8')); return Array.isArray(list) ? list : [] } catch { return [] }
+}
+function writeNotifications(root, list) {
+  const file = path.join(root, NOTIFY_FILE)
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`
+  fs.writeFileSync(tmp, JSON.stringify(list, null, 2))
+  fs.renameSync(tmp, file)
+}
+
 function listNotes(root, notebook) {
   if (notebook === META || String(notebook).startsWith('.dsh-notebooks')) throw new Error('不能读取内部元数据')
   const dir = inside(root, notebook)
@@ -95,10 +122,11 @@ export function callMcpTool(root, name, args = {}) {
     return { content: [{ type: 'text', text: JSON.stringify(hits) }] }
   }
   if (name === 'notify') {
-    const data = manifest(root)
-    const item = { id: crypto.randomUUID(), title: String(args.title || ''), body: String(args.body || ''), at: new Date().toISOString() }
-    data.ui = { ...(data.ui || {}), notifications: [...(data.ui?.notifications || []), item].slice(-50) }
-    fs.writeFileSync(path.join(root, META), JSON.stringify(data, null, 2))
+    const item = withNotifyLock(root, () => {
+      const list = [...readNotifications(root), { id: crypto.randomUUID(), title: String(args.title || ''), body: String(args.body || ''), at: new Date().toISOString() }].slice(-50)
+      writeNotifications(root, list)
+      return list[list.length - 1]
+    })
     return { content: [{ type: 'text', text: JSON.stringify({ ok: true, id: item.id }) }] }
   }
   if (name === 'read_note') return { content: [{ type: 'text', text: readNote(root, String(args.path || '')).content }] }
