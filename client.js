@@ -3513,11 +3513,12 @@ window.__ModuleLoader__.load({
         const timer = setInterval(async () => {
           try {
             const status = (await api('agent.status', { id: jobId })).job
-            const progressIds = new Set((status.surfaces || []).filter((item) => item.kind === 'progress' && item.status === 'waiting').map((item) => item.id))
             setSurfaces((prev) => {
-              const next = prev.filter((item) => !isJobProgress(item, jobId) || progressIds.has(item.id))
+              const hasLaunch = prev.some((item) => item.id === launchId)
+              const next = prev.filter((item) => item.id === launchId || !isJobProgress(item, jobId))
               for (const item of status.surfaces || []) {
                 if (item.awaitResponse || item.status !== 'waiting') continue
+                if (hasLaunch && item.kind === 'progress') continue
                 const index = next.findIndex((entry) => entry.id === item.id)
                 if (index >= 0) next[index] = { ...item, fromJob: jobId }
                 else next.push({ ...item, fromJob: jobId })
@@ -3557,6 +3558,7 @@ window.__ModuleLoader__.load({
 
       const executeAgent = async (instruction, context, images = [], history = [], resumeJobId = '') => {
         const key = `agentjob:${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
+        const launchId = `agent-launch-${key}`
         const upsert = (patch) => setToasts((prev) => {
           const index = prev.findIndex((toast) => toast.key === key)
           if (index === -1) return [...prev, { id: key, key, ...patch }].slice(-3)
@@ -3565,6 +3567,13 @@ window.__ModuleLoader__.load({
           return next
         })
         const remove = () => setToasts((prev) => prev.filter((toast) => toast.key !== key))
+        const updateLaunch = (patch) => setSurfaces((prev) => {
+          const next = prev.filter((item) => item.id !== launchId)
+          next.push({ id: launchId, key, kind: 'progress', type: 'toast', title: 'Agent 正在处理', body: instruction, status: 'waiting', launch: true, ...patch })
+          return next
+        })
+        const removeLaunch = () => setSurfaces((prev) => prev.filter((item) => item.id !== launchId))
+        updateLaunch({ body: instruction })
         let jobId = ''
         const cancel = () => {
           if (!jobId) return
@@ -3582,16 +3591,17 @@ window.__ModuleLoader__.load({
             jobId = started.jobId
           }
           agentJobRef.current = jobId
-          setSurfaces((prev) => prev.filter((item) => item.kind !== 'progress' || item.fromJob))
+          updateLaunch({ body: 'Agent 正在启动…', fromJob: jobId })
           try { localStorage.setItem('dsan-active-agent-job', jobId) } catch { /* ignore */ }
           while (true) {
             if (!appMountedRef.current) return false
             const status = (await api('agent.status', { id: jobId })).job
-            const progressIds = new Set((status.surfaces || []).filter((item) => item.kind === 'progress' && item.status === 'waiting').map((item) => item.id))
             setSurfaces((prev) => {
-              const next = prev.filter((item) => !isJobProgress(item, jobId) || progressIds.has(item.id))
+              const hasLaunch = prev.some((item) => item.id === launchId)
+              const next = prev.filter((item) => item.id === launchId || !isJobProgress(item, jobId))
               for (const item of status.surfaces || []) {
                 if (item.awaitResponse || item.status !== 'waiting') continue
+                if (hasLaunch && item.kind === 'progress') continue
                 const index = next.findIndex((entry) => entry.id === item.id)
                 if (index >= 0) next[index] = { ...item, fromJob: jobId }
                 else next.push({ ...item, fromJob: jobId })
@@ -3599,16 +3609,19 @@ window.__ModuleLoader__.load({
               return next
             })
             if (status.status === 'running') {
+              updateLaunch({ body: status.message || 'Agent 正在处理…', fromJob: jobId })
               await new Promise((resolve) => setTimeout(resolve, 800))
               continue
             }
             if (status.status === 'waiting' && status.question) {
               remove()
+              removeLaunch()
               const question = { ...status.question, waitingJob: jobId, allowFreeText: status.question.allowFreeText !== false }
               setSurfaces((prev) => [...prev.filter((item) => !isJobProgress(item, jobId) && !(item.kind === 'agent-wait' && item.waitingJob === jobId)), { ...question, kind: 'agent-wait' }])
               await new Promise((resolve) => setTimeout(resolve, 800))
               continue
             }
+            removeLaunch()
             setSurfaces((prev) => prev.filter((item) => !isJobProgress(item, jobId) && !(item.kind === 'agent-wait' && item.waitingJob === jobId)))
             remove()
             if (status.status === 'done') {
@@ -3628,6 +3641,7 @@ window.__ModuleLoader__.load({
           }
         } catch (err) {
           remove()
+          removeLaunch()
           const log = [
             '随记 /agent 错误',
             `时间：${new Date().toISOString()}`,
