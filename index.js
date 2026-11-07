@@ -3783,6 +3783,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   job.staged = staged
   const createdPaths = new Set()
   const stage = (operation) => {
+    if (staged.some((item) => JSON.stringify(item) === JSON.stringify(operation))) return { staged: true, duplicate: true, count: staged.length }
     if (operation.op === 'create') {
       const desired = `${safeName(operation.notebook || '', '')}/${safeName(operation.title || '新笔记')}.md`
       if (fs.existsSync(absPath(root, desired))) throw new Error(`同名笔记已存在：${desired}`)
@@ -3831,7 +3832,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
         createdPaths.add(desired)
       }
       assertAgentScope(context, list, createdPaths)
-      staged.push(...list)
+      for (const op of list) if (!staged.some((item) => JSON.stringify(item) === JSON.stringify(op))) staged.push(op)
       for (const op of list) if (op.op === 'create') createdPaths.add(`${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`)
       return { staged: true, count: staged.length }
     },
@@ -3918,10 +3919,11 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       try {
         const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, true)
         if (!out.errors?.length) {
+          const cleanReply = String(result.text || '').replace(/\n*说明：当前待写入操作仍在[\s\S]*$/, '').replace(/\n*另外要坦白一点[\s\S]*$/, '').trim()
           job.staged = []
           job.status = 'done'
           job.message = '处理完成'
-          job.result = { reply: result.text, applied: out.applied || [], errors: [], runId: out.runId || null, files: [] }
+          job.result = { reply: cleanReply ? `${cleanReply}\n\n已直接写入，无需确认。` : '已直接写入。', applied: out.applied || [], errors: [], runId: out.runId || null, files: [] }
           saveAgentSession(root, job)
           return
         }
