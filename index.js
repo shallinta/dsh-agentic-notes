@@ -4816,6 +4816,12 @@ async function dispatchUnlocked(ctx, op, args) {
   const manifest = readManifest(root)
 
   switch (op) {
+    case 'notifications': {
+      const root = rootOf()
+      if (!root) return { items: [] }
+      const items = readJson(path.join(root, META_DIR, 'notifications.json'), [])
+      return { items: Array.isArray(items) ? items.slice(-50) : [] }
+    }
     case 'state':
       return buildState(root)
     case 'ui.heartbeat':

@@ -3122,10 +3122,11 @@ window.__ModuleLoader__.load({
         setToasts((prev) => prev.some((item) => item.id === id) ? prev : [...prev, { ...toast, id, auto }].slice(-3))
         if (auto) setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), timeout)
       }, [])
+      const notificationsInitialized = useRef(false)
       const seenNotifications = useRef((() => { try { const list = JSON.parse(sessionStorage.getItem('dsan.seen.notifications') || '[]'); return Array.isArray(list) ? new Set(list) : new Set() } catch { return new Set() } })())
       useEffect(() => {
         const list = Array.isArray(state?.notifications) ? state.notifications : []
-        if (!seenNotifications.current.size) { for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ }; return }
+        if (!notificationsInitialized.current) { notificationsInitialized.current = true; for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ }; return }
         let changed = false
         for (const item of list) {
           if (seenNotifications.current.has(item.id)) continue
