@@ -9,7 +9,7 @@ rl.on('line', (line) => {
   if (!line.trim()) return
   let request
   try { request = JSON.parse(line) } catch { return }
-  if (!request.id) return
+  if (request.id === undefined) return
   const reply = (result) => process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: request.id, result })}\n`)
   const fail = (message) => process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32603, message } })}\n`)
   try {

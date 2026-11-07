@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { runNativeToolLoop, validateToolArguments } from './native-agent-loop.js'
 import { nativeAgentToolSchemas, createNativeToolExecutor } from './native-agent-tools.js'
 import { createAgentService } from './agent-service.js'
-import { mcpTools, callMcpTool } from './mcp-core.js'
+import { mcpTools, callMcpTool, proposalSignature } from './mcp-core.js'
 
 export const inject = ['webServer', 'connection']
 
@@ -78,7 +78,7 @@ function loadAgentSessionByJob(root, jobId) {
         id: data.jobId, sessionId: data.id, status: data.status || 'waiting',
         phase: data.phase || 'surface', message: '等待用户回答', round: data.round || 0,
         total: 0, error: '', result: null, cancelled: false, args: data.args || {},
-        history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], staged: data.staged || [], messages: data.messages || [], logPath: data.logPath || '',
+        history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], staged: data.staged || [], messages: data.messages || [], baselineSignature: data.baselineSignature || '', logPath: data.logPath || '',
         createdAt: data.updatedAt, updatedAt: nowIso(),
       }
       for (const surface of job.surfaces) agentSurfaces.set(surface.id, surface)
@@ -100,7 +100,7 @@ function saveAgentSession(root, job) {
     fs.mkdirSync(dir, { recursive: true })
     writeJson(path.join(dir, `${job.sessionId}.json`), {
       id: job.sessionId, jobId: job.id, status: job.status, phase: job.phase,
-      args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], staged: job.staged || [], messages: job.messages || [], logPath: job.logPath || '',
+      args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], staged: job.staged || [], messages: job.messages || [], baselineSignature: job.baselineSignature || '', logPath: job.logPath || '',
       round: job.round || 0, updatedAt: nowIso(),
     })
   } catch { /* best effort */ }
@@ -3680,7 +3680,8 @@ function projectedReactStickies(root, manifest, operations) {
 }
 
 function projectedReactSettings(root, manifest, operations) {
-  const settings = { ...readConfig(), privacyMode: manifest.ui?.privacyMode === true }
+  const { mcpToken, ...safeConfig } = readConfig()
+  const settings = { ...safeConfig, privacyMode: manifest.ui?.privacyMode === true }
   for (const op of operations || []) {
     if (op.op === 'settingsUpdate' && op.set && typeof op.set === 'object') Object.assign(settings, op.set)
     if (op.op === 'setPrivacyMode' && typeof op.enabled === 'boolean') settings.privacyMode = op.enabled
@@ -3713,7 +3714,6 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   const createdPaths = new Set()
   const stage = (operation) => {
     assertAgentScope(context, [operation], createdPaths)
-    if (operation.op === 'create') createdPaths.add(`${safeName(operation.notebook || '', '')}/${safeName(operation.title || '新笔记')}.md`)
     staged.push(operation)
     return { staged: true, count: staged.length }
   }
@@ -3731,7 +3731,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     },
     readTodo: async () => JSON.parse(mcpRead('read_todo') || '{"items":[]}').items,
     readStickies: async () => JSON.parse(mcpRead('read_stickies') || '[]'),
-    readSettings: async () => readConfig(),
+    readSettings: async () => { const { mcpToken, ...safe } = readConfig(); return safe },
     webFetch: async ({ url }) => fetchWebText(String(url || ''), Number(readConfig().webFetchMaxChars) || 16000, Number(readConfig().webTimeoutMs) || 60000),
     createNote: async (a) => stage({ op: 'create', notebook: a.notebook, title: a.title, body: a.body }),
     writeNote: async (a) => stage({ op: 'write', path: a.path, content: a.content }),
@@ -3751,7 +3751,6 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       const list = Array.isArray(operations) ? operations : []
       assertAgentScope(context, list, createdPaths)
       staged.push(...list)
-      for (const op of list) if (op.op === 'create') createdPaths.add(`${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`)
       return { staged: true, count: staged.length }
     },
     applyOperations: async ({ operations }) => {
@@ -4469,7 +4468,7 @@ export function apply(ctx) {
       let payload
       try { payload = JSON.parse(await readBody(req) || '{}') } catch { res.statusCode = 400; res.end(); return }
       const send = (body) => { res.statusCode = 200; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(body)) }
-      if (!payload.id) { res.statusCode = 202; res.end(); return }
+      if (payload.id === undefined) { res.statusCode = 202; res.end(); return }
       try {
         const root = rootOf()
         if (!root) throw new Error('还没有选择笔记目录')
@@ -5189,7 +5188,7 @@ async function dispatchUnlocked(ctx, op, args) {
         const data = readJson(path.join(dir, name), null)
         if (!data || data.status !== 'waiting') return null
         if (data.source === 'mcp' && !data.signature) {
-          data.signature = stateSignature(root, readManifest(root))
+          data.signature = proposalSignature(root)
           writeJson(path.join(dir, name), data)
         }
         return { id: data.id || name.replace(/\.json$/, ''), source: data.source || 'agent', brief: data.brief || '', summary: data.summary || [], createdAt: data.createdAt || data.at || '' }
@@ -5226,7 +5225,8 @@ async function dispatchUnlocked(ctx, op, args) {
         const pending = readJson(file, null)
         if (!pending) throw new Error('找不到待确认的改动')
         if (pending.status && pending.status !== 'waiting') throw new Error('这个提案已经处理，不能重复确认')
-        if (pending.signature && stateSignature(root, manifest) !== pending.signature) throw new Error('确认前笔记、待办或便笺已有改动，请重新让 agent 生成方案')
+        const currentSignature = pending.source === 'mcp' ? proposalSignature(root) : stateSignature(root, manifest)
+        if (pending.signature && currentSignature !== pending.signature) throw new Error('确认前笔记已有改动，请重新生成方案')
         if (pending.kind === 'capture') {
           const copied = []
           try {
@@ -5277,7 +5277,11 @@ async function dispatchUnlocked(ctx, op, args) {
             throw err
           }
         }
-        const outcome = await applyAgentOperations(root, pending.operations || [], pending.instruction || '', pending.signature, true)
+        const outcome = await applyAgentOperations(root, pending.operations || [], pending.instruction || '', pending.signature, true, () => {
+          const latestPending = readJson(file, null)
+          if (!latestPending) throw new Error('提案已取消')
+          if (latestPending.status && latestPending.status !== 'waiting') throw new Error('提案已取消或已处理')
+        })
         fs.rmSync(file, { force: true })
         return { ...outcome, reply: pending.reply || '' }
       } finally {

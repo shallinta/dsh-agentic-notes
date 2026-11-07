@@ -47,8 +47,22 @@ function validateOperations(root, operations) {
   for (const op of operations) {
     if (!op || !OPS.has(op.op)) throw new Error(`不支持的操作：${op?.op || ''}`)
     if (op.path) inside(root, op.path)
+    if (op.op === 'write' && typeof op.content !== 'string') throw new Error('write 必须提供 content（可为空字符串）')
+    if (op.op === 'create' && (!op.notebook || !op.title)) throw new Error('create 必须提供 notebook 和 title')
   }
   return operations
+}
+export function proposalSignature(root) {
+  const files = fs.readdirSync(root, { recursive: true }).filter((name) => String(name).endsWith('.md')).sort()
+  const hash = crypto.createHash('sha256')
+  for (const rel of files) {
+    const abs = path.join(root, String(rel))
+    const stat = fs.statSync(abs)
+    hash.update(`${rel}:${stat.size}:${stat.mtimeMs}
+`)
+  }
+  hash.update(fs.readFileSync(path.join(root, META), 'utf8'))
+  return hash.digest('hex')
 }
 
 export const mcpTools = [
@@ -77,8 +91,19 @@ export function callMcpTool(root, name, args = {}) {
     return { content: [{ type: 'text', text: JSON.stringify(hits) }] }
   }
   if (name === 'read_note') return { content: [{ type: 'text', text: readNote(root, String(args.path || '')).content }] }
-  if (name === 'read_todo') return { content: [{ type: 'text', text: fs.readFileSync(path.join(root, 'todo.json'), 'utf8') }] }
-  if (name === 'read_stickies') return { content: [{ type: 'text', text: JSON.stringify(manifest(root).stickies || []) }] }
+  if (name === 'read_todo') {
+    const primary = path.join(root, '便笺', 'todo.json')
+    const fallback = path.join(root, 'todo.json')
+    return { content: [{ type: 'text', text: fs.readFileSync(fs.existsSync(primary) ? primary : fallback, 'utf8') }] }
+  }
+  if (name === 'read_stickies') {
+    const stickies = (manifest(root).stickies || []).map((sticky) => {
+      let items = []
+      try { items = fs.readFileSync(path.join(root, sticky.file), 'utf8').split('\n').map((line) => line.replace(/^[-*+]\s*/, '').trim()).filter(Boolean) } catch { /* ignore */ }
+      return { ...sticky, items }
+    })
+    return { content: [{ type: 'text', text: JSON.stringify(stickies) }] }
+  }
   if (name === 'propose_operations') {
     const operations = validateOperations(root, args.operations)
     const id = crypto.randomUUID()
