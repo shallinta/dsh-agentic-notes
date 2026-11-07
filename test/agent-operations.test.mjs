@@ -101,3 +101,21 @@ test('failed batch restores privacy and config side effects', async () => {
   assert.equal(after.ui?.privacyMode, false)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('failed batch restores moved note and images', async () => {
+  const root = tempRoot()
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.notebooks.push({ name: 'Target' })
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  fs.writeFileSync(path.join(root, 'Test', 'a.png'), 'image')
+  fs.writeFileSync(path.join(root, 'Test', 'a.md'), '# a\n\n![x](a.png)\n')
+  const out = await applyAgentOperations(root, [
+    { op: 'move', path: 'Test/a.md', notebook: 'Target' },
+    { op: 'delete', path: 'Test/missing.md' },
+  ], 'test', null, true)
+  assert.equal(out.errors.length, 1)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'a.md')), true)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'a.png')), true)
+  assert.equal(fs.existsSync(path.join(root, 'Target', 'a.md')), false)
+  fs.rmSync(root, { recursive: true, force: true })
+})
