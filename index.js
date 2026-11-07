@@ -548,6 +548,7 @@ function readManifest(root) {
       todoHideDone: data.ui.todoHideDone === true,
       privacyMode: data.ui.privacyMode === true,
       captureHistory: Array.isArray(data.ui.captureHistory) ? data.ui.captureHistory.map(String).slice(0, 50) : [],
+      notifications: Array.isArray(data.ui.notifications) ? data.ui.notifications.slice(-50) : [],
     } : { fabTop: null, todoHideDone: false, privacyMode: false, captureHistory: [] },
   }
 }
