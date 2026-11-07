@@ -124,6 +124,7 @@ export async function runNativeToolLoop(options) {
       ...(signal ? { signal } : {}),
     }
     const turn = await collectTurn(llm.stream(request))
+    if (signal?.aborted || options.isCancelled?.()) throw Object.assign(new Error('已取消'), { cancelled: true })
     const reason = turn.finish?.reason
     if (reason?.kind === 'aborted') throw Object.assign(new Error('已取消'), { cancelled: true })
     if (reason?.kind === 'error') throw new Error(reason.failure?.message || '模型调用失败')

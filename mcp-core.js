@@ -35,11 +35,13 @@ function proposal(root, id) {
   return { file, data: JSON.parse(fs.readFileSync(file, 'utf8')) }
 }
 function listNotes(root, notebook) {
+  if (notebook === META || String(notebook).startsWith('.dsh-notebooks')) throw new Error('不能读取内部元数据')
   const dir = inside(root, notebook)
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir).filter((name) => name.endsWith('.md')).map((name) => ({ path: path.join(notebook, name), title: name.replace(/\.md$/i, '') }))
 }
 function readNote(root, rel) {
+  if (rel === META || rel.startsWith('.dsh-notebooks/')) throw new Error('不能读取内部元数据')
   return { path: rel, content: fs.readFileSync(inside(root, rel), 'utf8') }
 }
 function validateOperations(root, operations) {
@@ -88,7 +90,7 @@ export function callMcpTool(root, name, args = {}) {
     const hits = []
     for (const notebook of notebooks) for (const note of listNotes(root, notebook)) {
       const text = readNote(root, note.path).content
-      if (text.toLowerCase().includes(query)) hits.push({ ...note, excerpt: text.slice(0, 200) })
+      if (text.toLowerCase().includes(query) || String(note.title).toLowerCase().includes(query)) hits.push({ ...note, excerpt: text.slice(0, 200) })
     }
     return { content: [{ type: 'text', text: JSON.stringify(hits) }] }
   }

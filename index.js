@@ -2844,7 +2844,10 @@ function undoAgentRun(root, manifest, runId) {
     }
   }
   if (restoreErrors.length) throw new Error(`整批撤销已恢复大部分内容，但这些文件失败：${restoreErrors.join('；')}`)
-  if (meta.config && typeof meta.config === 'object') saveConfig(meta.config)
+  if (meta.config && typeof meta.config === 'object') {
+    const { mcpToken } = readConfig()
+    saveConfig({ ...meta.config, ...(mcpToken ? { mcpToken } : {}) })
+  }
   if (typeof meta.homeBackground === 'string') manifest.homeBackground = meta.homeBackground
   if (typeof meta.privacyMode === 'boolean') manifest.ui = { ...(manifest.ui || {}), privacyMode: meta.privacyMode }
   for (const notebook of manifest.notebooks) fs.mkdirSync(path.join(root, notebook.name), { recursive: true })
@@ -2964,6 +2967,10 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
       throw new Error('改动基线已变化，请重新生成方案')
     }
     const configBefore = JSON.parse(JSON.stringify(readConfig()))
+    const currentToken = configBefore.mcpToken || ''
+    delete configBefore.mcpToken
+    const uiBefore = JSON.parse(JSON.stringify(currentManifest.ui || {}))
+    const diaryCoverBefore = currentManifest.diaryCover || ''
     const homeBackgroundBefore = currentManifest.homeBackground || ''
     const privacyModeBefore = currentManifest.ui?.privacyMode === true
     const capturesBefore = JSON.parse(JSON.stringify(currentManifest.captures || []))
@@ -3240,12 +3247,23 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
       for (const rel of listMarkdownFiles(root)) {
         if (!beforeFiles.has(rel)) { try { fs.unlinkSync(absPath(root, rel)) } catch { /* ignore */ } }
       }
+      for (const move of [...binaryMoves].reverse()) {
+        try {
+          if (move?.to && fs.existsSync(absPath(root, move.to))) {
+            fs.mkdirSync(path.dirname(absPath(root, move.from)), { recursive: true })
+            fs.renameSync(absPath(root, move.to), absPath(root, move.from))
+          }
+        } catch { /* ignore */ }
+      }
       currentManifest.notebooks = notebooksBefore
       currentManifest.noteOrder = noteOrderBefore
       currentManifest.stickies = stickiesBefore
+      currentManifest.ui = uiBefore
+      currentManifest.homeBackground = homeBackgroundBefore
+      currentManifest.diaryCover = diaryCoverBefore
       saveManifest(root, currentManifest)
       writeJson(todoPath(root), todoBefore)
-      writeJson(CONFIG_FILE, configBefore)
+      writeJson(CONFIG_FILE, { ...configBefore, mcpToken: currentToken })
       fs.rmSync(snapshot.dir, { recursive: true, force: true })
       return { applied: [], errors: errorsLocal, runId: null, remindersCreated: [] }
     }
@@ -3930,8 +3948,31 @@ const MCP_WRITE_TOOLS = [
   name, description,
   inputSchema: { type: 'object', properties: Object.fromEntries(Object.entries(props).map(([key, type]) => [key, { type }])), required, additionalProperties: false },
 }))
+for (const tool of MCP_WRITE_TOOLS) {
+  if (['write_note', 'rename_note', 'move_note', 'delete_note'].includes(tool.name)) {
+    tool.inputSchema.properties.expectedMtime = { type: 'number' }
+    tool.inputSchema.properties.expectedHash = { type: 'string' }
+  }
+}
+
+function validateMcpToolArgs(name, args) {
+  const tool = MCP_WRITE_TOOLS.find((item) => item.name === name)
+  if (!tool) return
+  const schema = tool.inputSchema
+  if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('参数必须是对象')
+  for (const key of schema.required || []) if (!(key in args)) throw new Error(`缺少参数：${key}`)
+  for (const [key, value] of Object.entries(args)) {
+    const prop = schema.properties?.[key]
+    if (!prop) throw new Error(`不支持的参数：${key}`)
+    if (prop.type === 'string' && typeof value !== 'string') throw new Error(`参数 ${key} 需要字符串`)
+    if (prop.type === 'boolean' && typeof value !== 'boolean') throw new Error(`参数 ${key} 需要布尔值`)
+    if (prop.type === 'array' && !Array.isArray(value)) throw new Error(`参数 ${key} 需要数组`)
+    if (prop.type === 'object' && (typeof value !== 'object' || value === null || Array.isArray(value))) throw new Error(`参数 ${key} 需要对象`)
+  }
+}
 
 async function callHttpMcpTool(root, name, args = {}) {
+  validateMcpToolArgs(name, args)
   const readNames = new Set(['list_notebooks', 'list_notes', 'search_notes', 'read_note', 'read_todo', 'read_stickies', 'notify'])
   if (readNames.has(name)) return callMcpTool(root, name, args)
   let operation = null
@@ -3948,6 +3989,13 @@ async function callHttpMcpTool(root, name, args = {}) {
   else if (name === 'memo_update') operation = { op: 'memoUpdate', id: args.id, items: args.items, color: args.color }
   else if (name === 'memo_delete') operation = { op: 'memoDelete', id: args.id }
   else throw new Error(`未知工具：${name}`)
+  if (operation.path && (args.expectedMtime !== undefined || args.expectedHash !== undefined)) {
+    const abs = absPath(root, operation.path)
+    if (!fs.existsSync(abs)) throw new Error('目标笔记不存在')
+    const stat = fs.statSync(abs)
+    if (args.expectedMtime !== undefined && Math.abs(stat.mtimeMs - Number(args.expectedMtime)) > 1) throw new Error('笔记已被修改，请重新读取')
+    if (args.expectedHash !== undefined && fileHash(abs) !== String(args.expectedHash)) throw new Error('笔记内容已变化，请重新读取')
+  }
   const out = await applyAgentOperations(root, [operation], 'MCP 外部写入', null, true)
   if (out.errors?.length) throw new Error(out.errors.join('；'))
   return { content: [{ type: 'text', text: JSON.stringify({ ok: true, applied: out.applied, runId: out.runId }) }] }
