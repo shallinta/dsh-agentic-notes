@@ -3134,6 +3134,12 @@ window.__ModuleLoader__.load({
         }
         if (changed) { for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ } }
       }, [state?.notifications, pushToast])
+      useEffect(() => {
+        const timer = setInterval(async () => {
+          try { const { items } = await api('notifications'); setState((prev) => prev ? { ...prev, notifications: items || [] } : prev) } catch { /* ignore */ }
+        }, 2000)
+        return () => clearInterval(timer)
+      }, [])
       const refresh = useCallback(async () => {
         try {
           const next = await api('state')

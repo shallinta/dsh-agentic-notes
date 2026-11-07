@@ -4781,7 +4781,7 @@ function enqueueRootWrite(root, task) {
 }
 
 const NON_WRITE_OPS = new Set([
-  'state', 'pickRoot', 'models.providers', 'models.list', 'models.info',
+  'state', 'notifications', 'pickRoot', 'models.providers', 'models.list', 'models.info',
   'note.read', 'notebook.notes', 'diary.list', 'diary.doc',
   'agent.run', 'agent.start', 'agent.status', 'agent.cancelJob', 'agent.confirm', 'agent.cancel', 'agent.log', 'surface.answer', 'surface.close', 'review.surface',
   'capture.move', 'capture.retryQueue',
