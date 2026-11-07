@@ -73,6 +73,7 @@ export const mcpTools = [
   { name: 'list_notebooks', description: '列出笔记本', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'list_notes', description: '列出某个笔记本里的笔记', inputSchema: { type: 'object', properties: { notebook: { type: 'string' } }, required: ['notebook'], additionalProperties: false } },
   { name: 'search_notes', description: '按关键词搜索笔记标题和正文', inputSchema: { type: 'object', properties: { query: { type: 'string' }, notebook: { type: 'string' } }, required: ['query'], additionalProperties: false } },
+  { name: 'notify', description: '显示一条全局提示', inputSchema: { type: 'object', properties: { title: { type: 'string' }, body: { type: 'string' } }, required: ['title'], additionalProperties: false } },
   { name: 'read_note', description: '读取一篇笔记', inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'], additionalProperties: false } },
   { name: 'read_todo', description: '读取待办', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'read_stickies', description: '读取便笺', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -90,6 +91,13 @@ export function callMcpTool(root, name, args = {}) {
       if (text.toLowerCase().includes(query)) hits.push({ ...note, excerpt: text.slice(0, 200) })
     }
     return { content: [{ type: 'text', text: JSON.stringify(hits) }] }
+  }
+  if (name === 'notify') {
+    const data = manifest(root)
+    const item = { id: crypto.randomUUID(), title: String(args.title || ''), body: String(args.body || ''), at: new Date().toISOString() }
+    data.ui = { ...(data.ui || {}), notifications: [...(data.ui?.notifications || []), item].slice(-50) }
+    fs.writeFileSync(path.join(root, META), JSON.stringify(data, null, 2))
+    return { content: [{ type: 'text', text: JSON.stringify({ ok: true, id: item.id }) }] }
   }
   if (name === 'read_note') return { content: [{ type: 'text', text: readNote(root, String(args.path || '')).content }] }
   if (name === 'read_todo') {

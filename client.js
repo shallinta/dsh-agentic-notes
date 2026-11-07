@@ -3122,6 +3122,18 @@ window.__ModuleLoader__.load({
         setToasts((prev) => [...prev, { ...toast, id, auto }].slice(-3))
         if (auto) setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), timeout)
       }, [])
+      const seenNotifications = useRef(null)
+      useEffect(() => {
+        const list = Array.isArray(state?.notifications) ? state.notifications : []
+        if (!seenNotifications.current) { seenNotifications.current = new Set(list.map((item) => item.id)); return }
+        let changed = false
+        for (const item of list) {
+          if (seenNotifications.current.has(item.id)) continue
+          seenNotifications.current.add(item.id); changed = true
+          pushToast({ title: item.title || '随记通知', body: item.body || '', duration: 8000 })
+        }
+        if (changed) seenNotifications.current = new Set(list.map((item) => item.id))
+      }, [state?.notifications, pushToast])
       const refresh = useCallback(async () => {
         try {
           const next = await api('state')

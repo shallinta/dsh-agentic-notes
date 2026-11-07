@@ -17,7 +17,7 @@ test('read-only MCP initialize and tools/list', async () => {
   child.kill()
   fs.rmSync(root, { recursive: true, force: true })
   assert.equal(JSON.parse(lines[0]).result.serverInfo.name, 'suiji')
-  assert.equal(JSON.parse(lines[1]).result.tools.length, 6)
+  assert.equal(JSON.parse(lines[1]).result.tools.length, 7)
 })
 
 test('search_notes finds content inside DSAN_ROOT', async () => {

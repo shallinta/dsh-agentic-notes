@@ -2062,6 +2062,7 @@ function buildState(root) {
   return {
     configured: true,
     root,
+    notifications: Array.isArray(manifest.ui?.notifications) ? manifest.ui.notifications : [],
     settings: {
       autoArchive: cfg.autoArchive,
       calendar: cfg.calendar === 'single' ? 'single' : 'double',
@@ -3931,7 +3932,7 @@ const MCP_WRITE_TOOLS = [
 }))
 
 async function callHttpMcpTool(root, name, args = {}) {
-  const readNames = new Set(['list_notebooks', 'list_notes', 'search_notes', 'read_note', 'read_todo', 'read_stickies'])
+  const readNames = new Set(['list_notebooks', 'list_notes', 'search_notes', 'read_note', 'read_todo', 'read_stickies', 'notify'])
   if (readNames.has(name)) return callMcpTool(root, name, args)
   let operation = null
   if (name === 'create_note') operation = { op: 'create', notebook: args.notebook, title: args.title, body: args.body }
