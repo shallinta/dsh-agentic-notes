@@ -28,7 +28,7 @@ export function pendingIdOf(value) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error('提案 ID 不合法')
   return id
 }
-function pendingFile(root, id) { return path.join(root, PENDING_DIR, `${pendingIdOf(id)}.json`) }
+function pendingFile(root, id) { return inside(root, path.join(PENDING_DIR, `${pendingIdOf(id)}.json`)) }
 function proposal(root, id) {
   const file = pendingFile(root, id)
   if (!fs.existsSync(file)) throw new Error('找不到提案')
@@ -47,7 +47,11 @@ function validateOperations(root, operations) {
   for (const op of operations) {
     if (!op || !OPS.has(op.op)) throw new Error(`不支持的操作：${op?.op || ''}`)
     if (op.path) inside(root, op.path)
-    if (op.op === 'write' && typeof op.content !== 'string') throw new Error('write 必须提供 content（可为空字符串）')
+    if (op.op === 'write') {
+      if (!op.path) throw new Error('write 必须提供 path')
+      if (typeof op.content !== 'string') throw new Error('write 必须提供 content（可为空字符串）')
+    }
+    if (op.op === 'delete' && !op.path) throw new Error('delete 必须提供 path')
     if (op.op === 'create' && (!op.notebook || !op.title)) throw new Error('create 必须提供 notebook 和 title')
   }
   return operations
@@ -92,14 +96,14 @@ export function callMcpTool(root, name, args = {}) {
   }
   if (name === 'read_note') return { content: [{ type: 'text', text: readNote(root, String(args.path || '')).content }] }
   if (name === 'read_todo') {
-    const primary = path.join(root, '便笺', 'todo.json')
-    const fallback = path.join(root, 'todo.json')
+    const primary = inside(root, path.join('便笺', 'todo.json'))
+    const fallback = inside(root, 'todo.json')
     return { content: [{ type: 'text', text: fs.readFileSync(fs.existsSync(primary) ? primary : fallback, 'utf8') }] }
   }
   if (name === 'read_stickies') {
     const stickies = (manifest(root).stickies || []).map((sticky) => {
       let items = []
-      try { items = fs.readFileSync(path.join(root, sticky.file), 'utf8').split('\n').map((line) => line.replace(/^[-*+]\s*/, '').trim()).filter(Boolean) } catch { /* ignore */ }
+      try { items = fs.readFileSync(inside(root, sticky.file), 'utf8').split('\n').map((line) => line.replace(/^[-*+]\s*/, '').trim()).filter(Boolean) } catch { /* ignore */ }
       return { ...sticky, items }
     })
     return { content: [{ type: 'text', text: JSON.stringify(stickies) }] }

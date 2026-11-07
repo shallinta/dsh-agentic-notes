@@ -2727,7 +2727,7 @@ function stateSignature(root, manifest) {
     JSON.stringify(manifest.ui || {}),
     String(manifest.homeBackground || ''),
     String(manifest.diaryCover || ''),
-    JSON.stringify(readConfig()),
+    JSON.stringify((() => { const { mcpToken, ...safe } = readConfig(); return safe })()),
   ].join('\n')
 }
 
@@ -2982,6 +2982,7 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
         if (kind === 'write') {
           const rel = decodeRel(String(op.path || ''))
           if (!rel.endsWith('.md')) throw new Error('只能写 markdown 文件')
+          if (typeof op.content !== 'string') throw new Error('write 必须提供 content')
           const abs = absPath(root, rel)
           if (fs.existsSync(abs)) {
             const previousText = fs.readFileSync(abs, 'utf8')
@@ -3713,8 +3714,13 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   job.staged = staged
   const createdPaths = new Set()
   const stage = (operation) => {
+    if (operation.op === 'create') {
+      const desired = `${safeName(operation.notebook || '', '')}/${safeName(operation.title || '新笔记')}.md`
+      if (fs.existsSync(absPath(root, desired))) throw new Error(`同名笔记已存在：${desired}`)
+    }
     assertAgentScope(context, [operation], createdPaths)
     staged.push(operation)
+    if (operation.op === 'create') createdPaths.add(`${safeName(operation.notebook || '', '')}/${safeName(operation.title || '新笔记')}.md`)
     return { staged: true, count: staged.length }
   }
   const mcpRead = (name, params) => {
@@ -3727,6 +3733,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     readNote: async ({ path: notePath }) => {
       const rel = normalizeAgentRel(notePath)
       if (context.view === 'note' && rel !== normalizeAgentRel(context.path)) throw new Error('当前打开的是单篇笔记，只能读取这一篇')
+      if (context.view === 'notebook' && !rel.startsWith(`${safeName(context.notebook || '', '')}/`)) throw new Error('当前打开的是笔记本，只能读取这个笔记本')
       return { path: rel, content: mcpRead('read_note', { path: rel }) }
     },
     readTodo: async () => JSON.parse(mcpRead('read_todo') || '{"items":[]}').items,
@@ -3749,8 +3756,14 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     setPrivacy: async (a) => stage({ op: 'setPrivacyMode', enabled: a.enabled }),
     stageOperations: async ({ operations }) => {
       const list = Array.isArray(operations) ? operations : []
+      for (const op of list) if (op.op === 'create') {
+        const desired = `${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`
+        if (fs.existsSync(absPath(root, desired))) throw new Error(`同名笔记已存在：${desired}`)
+        createdPaths.add(desired)
+      }
       assertAgentScope(context, list, createdPaths)
       staged.push(...list)
+      for (const op of list) if (op.op === 'create') createdPaths.add(`${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`)
       return { staged: true, count: staged.length }
     },
     applyOperations: async ({ operations }) => {
@@ -3815,7 +3828,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     }
     const result = await runNativeToolLoop({
       llm: ctx.get('llm'), provider: sel.provider, model: sel.model,
-      messages, system: '你是随记的笔记代理。使用工具读写笔记；写入必须先暂存，等待用户确认。完成后调用 finish。',
+      messages, system: `你是随记的笔记代理。使用工具读写笔记；写入必须先暂存，等待用户确认。完成后调用 finish。\n当前页面上下文：${JSON.stringify(scope).slice(0, 20000)}`,
       tools: nativeAgentToolSchemas, executeTool: createNativeToolExecutor(service),
       maxRounds: Math.max(1, Math.min(50, Number(readConfig().reactMaxRounds) || 20)),
       maxToolCalls: 60, isCancelled: () => job.cancelled,
@@ -3890,7 +3903,7 @@ async function runNativeShadow(ctx, root, manifest, args, job) {
     readNote: async ({ path: notePath }) => ({ content: readNote(root, normalizeAgentRel(notePath)).content }),
     readTodo: async () => readTodo(root).items,
     readStickies: async () => readStickies(root, manifest),
-    readSettings: async () => readConfig(),
+    readSettings: async () => { const { mcpToken, ...safe } = readConfig(); return safe },
     webFetch: async ({ url }) => fetchWebText(String(url || ''), 8000, 30000),
     createNote: readOnly, writeNote: readOnly, renameNote: readOnly, moveNote: readOnly, deleteNote: readOnly, updateFrontmatter: readOnly,
     todoAdd: readOnly, todoUpdate: readOnly, todoDelete: readOnly, memoCreate: readOnly, memoUpdate: readOnly, memoDelete: readOnly,
@@ -5277,10 +5290,11 @@ async function dispatchUnlocked(ctx, op, args) {
             throw err
           }
         }
-        const outcome = await applyAgentOperations(root, pending.operations || [], pending.instruction || '', pending.signature, true, () => {
+        const outcome = await applyAgentOperations(root, pending.operations || [], pending.instruction || '', pending.source === 'mcp' ? null : pending.signature, true, () => {
           const latestPending = readJson(file, null)
           if (!latestPending) throw new Error('提案已取消')
           if (latestPending.status && latestPending.status !== 'waiting') throw new Error('提案已取消或已处理')
+          if (latestPending.source === 'mcp' && latestPending.signature && proposalSignature(root) !== latestPending.signature) throw new Error('确认前笔记已有改动，请重新生成方案')
         })
         fs.rmSync(file, { force: true })
         return { ...outcome, reply: pending.reply || '' }
