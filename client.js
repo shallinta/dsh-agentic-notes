@@ -3558,7 +3558,7 @@ window.__ModuleLoader__.load({
 
       const executeAgent = async (instruction, context, images = [], history = [], resumeJobId = '') => {
         const key = `agentjob:${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
-        const launchId = `agent-launch-${key}`
+        const launchId = `agent-launch-${resumeJobId || key}`
         const upsert = (patch) => setToasts((prev) => {
           const index = prev.findIndex((toast) => toast.key === key)
           if (index === -1) return [...prev, { id: key, key, ...patch }].slice(-3)
