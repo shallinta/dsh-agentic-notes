@@ -3756,6 +3756,11 @@ function reactProtocolError(reason) {
   ].join('\n')
 }
 
+function dedupeOperations(operations) {
+  const out = []
+  for (const op of operations || []) if (!out.some((item) => JSON.stringify(item) === JSON.stringify(op))) out.push(op)
+  return out
+}
 function bodyLength(text) {
   return [...String(splitFrontmatter(text).body || '')].length
 }
@@ -3842,14 +3847,14 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
         createdPaths.add(desired)
       }
       assertAgentScope(context, list, createdPaths)
-      for (const op of list) if (!staged.some((item) => JSON.stringify(item) === JSON.stringify(op))) staged.push(op)
+      for (const op of dedupeOperations(list)) if (!staged.some((item) => JSON.stringify(item) === JSON.stringify(op))) staged.push(op)
       for (const op of list) if (op.op === 'create') createdPaths.add(`${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`)
       return { staged: true, count: staged.length }
     },
     applyOperations: async ({ operations }) => {
       const list = Array.isArray(operations) ? operations : []
       assertAgentScope(context, list, createdPaths)
-      staged.push(...list)
+      for (const op of dedupeOperations(list)) if (!staged.some((item) => JSON.stringify(item) === JSON.stringify(op))) staged.push(op)
       return { staged: true, count: staged.length, note: '操作已暂存，确认后才会落盘' }
     },
     createSurface: async (a) => {
@@ -3929,7 +3934,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       try {
         const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, true)
         if (!out.errors?.length) {
-          const cleanReply = String(result.text || '').replace(/\n*说明：当前待写入操作仍在[\s\S]*$/, '').replace(/\n*另外要坦白一点[\s\S]*$/, '').trim()
+          const cleanReply = String(result.text || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim()
           job.staged = []
           job.status = 'done'
           job.phase = 'done'
@@ -4305,7 +4310,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         assertAgentScope(context, operations, createdPaths)
         const needsConfirm = requiresConfirmation(root, operations)
         if (tool === 'stage_operations' || transaction || needsConfirm) {
-          staged.push(...operations)
+          for (const op of dedupeOperations(operations)) if (!staged.some((item) => JSON.stringify(item) === JSON.stringify(op))) staged.push(op)
           observation = `已暂存 ${operations.length} 个操作${needsConfirm ? '（需要确认）' : ''}`
         } else {
           const out = await applyAgentOperations(root, operations, instruction, job.baselineSignature, true)
@@ -4379,6 +4384,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         applied.push(...(out.applied || []))
         staged.length = 0
         job.staged = []
+        reply = String(reply || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim() + '\n\n已直接写入，无需确认。'
       }
     } catch { /* fall through to review */ }
   }
