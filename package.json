@@ -18,7 +18,11 @@
     "icon.svg",
     "assets/*",
     "SPEC.md",
-    "README.md"
+    "README.md",
+    "native-agent-loop.js",
+    "native-agent-tools.js",
+    "agent-service.js",
+    "mcp-server.js"
   ],
   "dsh": {
     "bundle": {

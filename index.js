@@ -2947,11 +2947,12 @@ function snapshotAgentBinaries(root, dir, operations) {
   return entries
 }
 
-async function applyAgentOperations(root, operations, instruction, expectedSignature = null, userConfirmed = false) {
+async function applyAgentOperations(root, operations, instruction, expectedSignature = null, userConfirmed = false, guard = null) {
   const destructive = (operations || []).some((op) => ['delete', 'deleteNotebook', 'fileDelete', 'renameNotebook', 'move'].includes(String(op?.op || '')))
   if (destructive && !userConfirmed) throw new Error('删除、移动或重命名操作必须先确认，不能直接落盘')
   const candidate = crypto.randomUUID()
   return enqueueRootWrite(root, async () => {
+    if (typeof guard === 'function') guard()
     const currentManifest = readManifest(root)
     if (expectedSignature && stateSignature(root, currentManifest) !== expectedSignature) {
       throw new Error('改动基线已变化，请重新生成方案')
@@ -3320,8 +3321,7 @@ function assertAgentScope(context, operations, createdPaths = new Set()) {
     if (kind === 'setNotebookPrivate') op.notebook = safeName(op.notebook || '', '')
     if (view === 'note') {
       if (kind === 'create' && op.notebook !== safeName(context?.notebook || '', '')) throw new Error(`当前打开的是单篇笔记，只能在「${safeName(context?.notebook || '', '')}」里新建笔记`)
-      const batchCreated = new Set((operations || []).filter((item) => item.op === 'create').map((item) => `${safeName(item.notebook || '', '')}/${safeName(item.title || '新笔记')}.md`))
-      if (hasPath && op.path !== notePath && !createdPaths.has(op.path) && !batchCreated.has(op.path)) throw new Error(`当前上下文只允许操作 ${notePath} 或本次新建的笔记，不能操作 ${op.path}`)
+      if (hasPath && op.path !== notePath && !createdPaths.has(op.path)) throw new Error(`当前上下文只允许操作 ${notePath} 或本次新建的笔记，不能操作 ${op.path}`)
       if (kind === 'move' && safeName(op.notebook || '', '') !== safeName(context?.notebook || '', '')) throw new Error('当前上下文只允许把笔记移回原笔记本')
       if (['renameNotebook', 'deleteNotebook', 'fileMove', 'fileCopy', 'fileDelete', 'reorderNotes', 'reorderNotebooks'].includes(kind)) throw new Error('单篇笔记上下文不能执行这个结构或文件操作')
       if (kind === 'setNotebookPrivate' && op.notebook !== safeName(context?.notebook || '', '')) throw new Error('单篇笔记上下文只能改当前笔记本的隐私状态')
@@ -3700,6 +3700,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   const instruction = String(args.instruction || '').trim()
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
   const scope = collectAgentContext(root, manifest, context, 40000)
+  job.baselineSignature = job.baselineSignature || stateSignature(root, manifest)
   const sel = modelSelection(ctx, root)
   if (!sel) throw new Error('没有可用的默认模型')
   const staged = Array.isArray(job.staged) ? job.staged : []
@@ -3831,7 +3832,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       const pending = {
         id, at: nowIso(), instruction, reply: result.text,
         brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}`,
-        scale: 'large', summary, signature: stateSignature(root, latest), operations: staged,
+        scale: 'large', summary, signature: job.baselineSignature, operations: staged,
       }
       writeJson(path.join(pendingDir(root), `${id}.json`), pending)
       job.staged = []
@@ -3901,7 +3902,8 @@ async function runReactAgent(ctx, root, manifest, args, job) {
   const instruction = String(args.instruction || '').trim()
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
   const scope = collectAgentContext(root, manifest, context, 40000)
-  const baseSignature = stateSignature(root, readManifest(root))
+  const baseSignature = job.baselineSignature || stateSignature(root, readManifest(root))
+  job.baselineSignature = baseSignature
   const staged = Array.isArray(job.staged) ? job.staged : []
   job.staged = staged
   const applied = []
@@ -4118,8 +4120,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
           staged.push(...operations)
           observation = `已暂存 ${operations.length} 个操作${destructive ? '（需要确认）' : ''}，确认后才会落盘`
         } else {
-          const beforeSignature = stateSignature(root, readManifest(root))
-          const out = await applyAgentOperations(root, operations, instruction, beforeSignature)
+          const out = await applyAgentOperations(root, operations, instruction, job.baselineSignature)
           applied.push(...(out.applied || []))
           if (out.errors?.length) throw new Error(`部分操作失败：${out.errors.join('；')}`)
           for (const item of out.applied || []) if (item.op === 'create' && item.path) createdPaths.add(item.path)
@@ -5194,7 +5195,11 @@ async function dispatchUnlocked(ctx, op, args) {
               fs.copyFileSync(source, target)
               copied.push(target)
             }
-            const outcome = await applyAgentOperations(root, pending.operations || [], pending.instruction || '', pending.signature, true)
+            const outcome = await applyAgentOperations(root, pending.operations || [], pending.instruction || '', pending.signature, true, () => {
+              const latestPending = readJson(file, null)
+              if (!latestPending) throw new Error('提案已取消')
+              if (latestPending.status && latestPending.status !== 'waiting') throw new Error('提案已取消或已处理')
+            })
             if (outcome.errors?.length) throw new Error(`部分操作失败：${outcome.errors.join('；')}`)
             const latest = readManifest(root)
             const capture = findCapture(latest, pending.captureId)
@@ -5251,7 +5256,10 @@ async function dispatchUnlocked(ctx, op, args) {
           saveManifest(root, manifest)
         }
       }
-      fs.rmSync(file, { force: true })
+      if (pending) {
+        pending.status = 'cancelled'; pending.cancelledAt = nowIso()
+        writeJson(file, pending)
+      } else fs.rmSync(file, { force: true })
       return { ok: true }
     }
     case 'agent.undo':

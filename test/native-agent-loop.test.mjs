@@ -107,3 +107,12 @@ test('awaitable surface stops turn with surface id', async () => {
   assert.equal(out.waiting, true)
   assert.equal(out.surfaceId, 'surface-1')
 })
+
+test('finish always has a paired tool result', async () => {
+  const tools = [{ name: 'finish', description: 'finish', parameters: { type: 'object', properties: { reply: { type: 'string' } }, required: ['reply'], additionalProperties: false } }]
+  const llm = fakeLlm([[{ type: 'tool-call-delta', index: 0, id: 'c1', name: 'finish', argumentsDelta: '{"reply":"done"}' }, { type: 'finish', reason: { kind: 'tool-call' } }]])
+  const out = await runNativeToolLoop({ ...base, tools, llm, messages: [{ role: 'user', content: [] }], executeTool: async () => 'bad' })
+  const result = out.messages.find((message) => message.role === 'tool')
+  assert.equal(result.toolCallId, 'c1')
+  assert.equal(result.content[0].text, 'done')
+})

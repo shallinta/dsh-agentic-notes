@@ -16,9 +16,23 @@ function manifest() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, META), 'utf8'))
 }
 function inside(rel) {
-  const abs = path.resolve(ROOT, rel)
-  if (!abs.startsWith(path.resolve(ROOT) + path.sep)) throw new Error('路径越界')
+  const text = String(rel || '')
+  if (!text || path.isAbsolute(text) || text.split(/[\\/]/).includes('..')) throw new Error('路径越界')
+  const abs = path.resolve(ROOT, text)
+  const rootReal = fs.realpathSync(ROOT)
+  let real = ''
+  try { real = fs.realpathSync(abs) } catch {
+    let parent = path.dirname(abs)
+    while (parent !== path.dirname(parent) && !fs.existsSync(parent)) parent = path.dirname(parent)
+    real = path.join(fs.realpathSync(parent), path.relative(parent, abs))
+  }
+  if (real !== rootReal && !real.startsWith(rootReal + path.sep)) throw new Error('路径越界')
   return abs
+}
+function pendingIdOf(value) {
+  const id = String(value || '')
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new Error('提案 ID 不合法')
+  return id
 }
 function listNotes(notebook) {
   const dir = inside(notebook)
@@ -33,7 +47,7 @@ function readNote(rel) {
   return { path: rel, content: text }
 }
 
-function pendingFile(id) { return path.join(ROOT, PENDING_DIR, `${id}.json`) }
+function pendingFile(id) { return path.join(ROOT, PENDING_DIR, `${pendingIdOf(id)}.json`) }
 function proposal(id) {
   const file = pendingFile(id)
   if (!fs.existsSync(file)) throw new Error('找不到提案')

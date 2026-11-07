@@ -154,6 +154,8 @@ export async function runNativeToolLoop(options) {
     if (finishCall) {
       if (finishCall.error) throw new Error(finishCall.error)
       const reply = String(finishCall.args?.reply || '')
+      messages.push(toolResult(finishCall, reply, false))
+      for (const extra of parsed) if (extra.id !== finishCall.id) messages.push(toolResult(extra, '未执行：已结束本轮', true))
       return { text: reply || turn.text, messages, toolCalls, usage, rounds: round + 1 }
     }
     for (const call of parsed) {
@@ -182,7 +184,10 @@ export async function runNativeToolLoop(options) {
         }
       }
       messages.push(toolResult(call, text, isError))
-      if (stopTurn) return { text: turn.text, messages, toolCalls, usage, rounds: round + 1, waiting: true, surfaceId: stopTurn.surfaceId }
+      if (stopTurn) {
+        for (const extra of parsed.slice(parsed.indexOf(call) + 1)) messages.push(toolResult(extra, '未执行：等待用户', true))
+        return { text: turn.text, messages, toolCalls, usage, rounds: round + 1, waiting: true, surfaceId: stopTurn.surfaceId }
+      }
     }
     if (typeof options.onProgress === 'function') {
       options.onProgress({ round: round + 1, toolCalls, usage })
