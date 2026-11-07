@@ -80,8 +80,8 @@ function loadAgentSessionByJob(root, jobId) {
       if (!data || data.jobId !== jobId) continue
       const job = {
         id: data.jobId, sessionId: data.id, status: data.status || 'waiting',
-        phase: data.phase || 'surface', message: '等待用户回答', round: data.round || 0,
-        total: 0, error: '', result: null, cancelled: false, args: data.args || {},
+        phase: data.phase || 'surface', message: data.message || '等待用户回答', round: data.round || 0,
+        total: 0, error: data.error || '', result: data.result || null, cancelled: false, args: data.args || {},
         history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], staged: data.staged || [], messages: data.messages || [], baselineSignature: data.baselineSignature || '', logPath: data.logPath || '',
         createdAt: data.updatedAt, updatedAt: nowIso(),
       }
@@ -103,7 +103,7 @@ function saveAgentSession(root, job) {
     const dir = path.join(path.join(root, META_DIR), 'agent-sessions')
     fs.mkdirSync(dir, { recursive: true })
     writeJson(path.join(dir, `${job.sessionId}.json`), {
-      id: job.sessionId, jobId: job.id, status: job.status, phase: job.phase,
+      id: job.sessionId, jobId: job.id, status: job.status, phase: job.phase, message: job.message || '', error: job.error || '', result: job.result || null,
       args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], staged: job.staged || [], messages: job.messages || [], baselineSignature: job.baselineSignature || '', logPath: job.logPath || '',
       round: job.round || 0, updatedAt: nowIso(),
     })
@@ -3932,6 +3932,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
           const cleanReply = String(result.text || '').replace(/\n*说明：当前待写入操作仍在[\s\S]*$/, '').replace(/\n*另外要坦白一点[\s\S]*$/, '').trim()
           job.staged = []
           job.status = 'done'
+          job.phase = 'done'
           job.message = '处理完成'
           job.result = { reply: cleanReply ? `${cleanReply}\n\n已直接写入，无需确认。` : '已直接写入。', applied: out.applied || [], errors: [], runId: out.runId || null, files: [] }
           saveAgentSession(root, job)
@@ -3952,6 +3953,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       writeJson(path.join(pendingDir(root), `${id}.json`), pending)
       job.staged = []
       job.status = 'done'
+      job.phase = 'done'
       job.result = { reply: result.text, applied: [], errors: [], runId: null, pendingId: id, brief: pending.brief, summary, files: [] }
     } else {
       job.status = 'done'
