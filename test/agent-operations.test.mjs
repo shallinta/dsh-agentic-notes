@@ -86,3 +86,18 @@ test('guard runs before any write', async () => {
   assert.equal(fs.existsSync(path.join(root, 'Test', 'blocked.md')), false)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('failed batch restores privacy and config side effects', async () => {
+  const root = tempRoot()
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.ui = { privacyMode: false }
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  const out = await applyAgentOperations(root, [
+    { op: 'setPrivacyMode', enabled: true },
+    { op: 'delete', path: 'Test/missing.md' },
+  ], 'test', null, true)
+  assert.equal(out.errors.length, 1)
+  const after = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  assert.equal(after.ui?.privacyMode, false)
+  fs.rmSync(root, { recursive: true, force: true })
+})

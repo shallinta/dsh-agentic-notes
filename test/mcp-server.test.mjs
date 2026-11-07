@@ -36,3 +36,11 @@ test('search_notes finds content inside DSAN_ROOT', async () => {
   assert.match(result.content[0].text, /A\/one\.md/)
 })
 
+
+test('MCP read_note rejects internal metadata', async () => {
+  const { callMcpTool } = await import('../mcp-core.js')
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsan-mcp-private-'))
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify({ notebooks: [{ name: 'A' }], stickies: [] }))
+  assert.throws(() => callMcpTool(root, 'read_note', { path: '.dsh-notebooks.json' }), /内部元数据/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
