@@ -18,6 +18,10 @@ import { mcpTools, callMcpTool, proposalSignature } from './mcp-core.js'
 
 export const inject = ['webServer', 'connection']
 
+function pluginCommit() {
+  try { return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: path.dirname(fileURLToPath(import.meta.url)), encoding: 'utf8' }).trim() } catch { return 'unknown' }
+}
+
 const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
 const CONFIG_FILE = path.join(DSH_HOME, 'dsh-agentic-notes.json')
 const API_PATH = '/dsh-agentic-notes/api'
@@ -4596,7 +4600,7 @@ export function apply(ctx) {
       try {
         const root = rootOf()
         if (!root) throw new Error('还没有选择笔记目录')
-        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.1.0' } } })
+        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.1.0', commit: pluginCommit() } } })
         if (payload.method === 'ping') return send({ jsonrpc: '2.0', id: payload.id, result: {} })
         if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: [...mcpTools, ...MCP_WRITE_TOOLS] } })
         if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: await callHttpMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
