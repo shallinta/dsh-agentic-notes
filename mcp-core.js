@@ -37,33 +37,50 @@ function proposal(root, id) {
   return { file, data: JSON.parse(fs.readFileSync(file, 'utf8')) }
 }
 function sleep(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) }
+function lockPid(lock) {
+  try { return Number(fs.readlinkSync(lock)) } catch {
+    try { return Number(fs.readFileSync(lock, 'utf8').trim()) } catch { return 0 }
+  }
+}
+function trySymlinkLock(lock) {
+  try { fs.symlinkSync(String(process.pid), lock); return true } catch { return false }
+}
+function removeIfPID(lock, pid) {
+  try {
+    if (pid > 0 && lockPid(lock) === pid) fs.unlinkSync(lock)
+    else if (!pid) {
+      const stat = fs.statSync(lock)
+      if (Date.now() - stat.mtimeMs > 1000) fs.unlinkSync(lock)
+    }
+  } catch { /* ignore */ }
+}
 function withNotifyLock(root, task) {
   const lock = path.join(root, NOTIFY_LOCK)
+  const recovery = `${lock}.recover`
   fs.mkdirSync(path.dirname(lock), { recursive: true })
   let acquired = false
-  for (let i = 0; i < 200; i += 1) {
-    try { fs.symlinkSync(String(process.pid), lock); acquired = true; break } catch {
-      try {
-        let pid = 0
-        try { pid = Number(fs.readlinkSync(lock)) } catch { pid = Number(fs.readFileSync(lock, 'utf8').trim()) }
-        if (!pid) {
-          try { if (Date.now() - fs.statSync(lock).mtimeMs > 1000) fs.unlinkSync(lock) } catch { /* ignore */ }
-        }
-        if (pid > 0) {
-          try { process.kill(pid, 0) } catch {
-            let current = ''
-            try { current = fs.readlinkSync(lock) } catch { try { current = fs.readFileSync(lock, 'utf8').trim() } catch { /* released */ } }
-            if (current === String(pid)) fs.unlinkSync(lock)
-            continue
+  for (let i = 0; i < 400; i += 1) {
+    if (trySymlinkLock(lock)) { acquired = true; break }
+    const pid = lockPid(lock)
+    if (pid > 0) {
+      try { process.kill(pid, 0) } catch {
+        if (trySymlinkLock(recovery)) {
+          try {
+            const again = lockPid(lock)
+            if (again === pid || !again) removeIfPID(lock, again)
+          } finally {
+            try { if (lockPid(recovery) === process.pid) fs.unlinkSync(recovery) } catch { /* ignore */ }
           }
         }
-      } catch { /* lock may have been released */ }
-      sleep(5)
+      }
+    } else {
+      removeIfPID(lock, 0)
     }
+    sleep(5)
   }
   if (!acquired) throw new Error('通知队列繁忙')
   try { return task() } finally {
-    try { if (fs.readlinkSync(lock) === String(process.pid)) fs.unlinkSync(lock) } catch { /* ignore */ }
+    try { if (lockPid(lock) === process.pid) fs.unlinkSync(lock) } catch { /* ignore */ }
   }
 }
 function readNotifications(root) {

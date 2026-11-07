@@ -2933,6 +2933,7 @@ window.__ModuleLoader__.load({
         const timer = setInterval(async () => {
           try {
             const next = await api('state')
+            if (next.root !== liveRoot) return
             setState(next)
             const pending = (next.captures || []).find((capture) => capture.question)
             if (pending?.question) setSurfaces((prev) => prev.some((item) => item.id === pending.question.id) ? prev : [...prev, { ...pending.question, captureId: pending.id }])
@@ -3545,6 +3546,7 @@ window.__ModuleLoader__.load({
 
       const pollAgentJob = (jobId) => {
         if (!jobId || agentPollers.current.has(jobId)) return
+        const launchId = `agent-launch-${jobId}`
         const timer = setInterval(async () => {
           try {
             const status = (await api('agent.status', { id: jobId })).job
