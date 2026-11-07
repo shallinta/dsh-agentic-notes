@@ -426,7 +426,7 @@ window.__ModuleLoader__.load({
       try {
         const saved = JSON.parse(localStorage.getItem('dsan.toasts.v2') || 'null')
         if (!saved || !Array.isArray(saved.toasts) || Date.now() - Number(saved.savedAt || 0) > 30 * 60 * 1000) return []
-        return saved.toasts.filter((toast) => toast && toast.title).slice(-3).map((toast) => ({
+        return saved.toasts.filter((toast) => toast && toast.title && !String(toast.id || '').startsWith('notify-')).slice(-3).map((toast) => ({
           id: String(toast.id || `restored-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`),
           title: String(toast.title || ''),
           body: String(toast.body || ''),
@@ -3122,21 +3122,17 @@ window.__ModuleLoader__.load({
         setToasts((prev) => prev.some((item) => item.id === id) ? prev : [...prev, { ...toast, id, auto }].slice(-3))
         if (auto) setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), timeout)
       }, [])
-      const seenNotifications = useRef(null)
-      const seenNotificationContent = useRef(new Set())
+      const seenNotifications = useRef((() => { try { const list = JSON.parse(sessionStorage.getItem('dsan.seen.notifications') || '[]'); return Array.isArray(list) ? new Set(list) : new Set() } catch { return new Set() } })())
       useEffect(() => {
         const list = Array.isArray(state?.notifications) ? state.notifications : []
-        if (!seenNotifications.current) { seenNotifications.current = new Set(list.map((item) => item.id)); return }
+        if (!seenNotifications.current.size) { for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ }; return }
         let changed = false
         for (const item of list) {
           if (seenNotifications.current.has(item.id)) continue
-          const contentKey = `${item.title || ''}\n${item.body || ''}`
-          if (seenNotificationContent.current.has(contentKey)) { seenNotifications.current.add(item.id); continue }
-          seenNotificationContent.current.add(contentKey)
           seenNotifications.current.add(item.id); changed = true
           pushToast({ id: `notify-${item.id}`, notificationId: item.id, title: item.title || '随记通知', body: item.body || '', duration: 8000 })
         }
-        if (changed) seenNotifications.current = new Set(list.map((item) => item.id))
+        if (changed) { for (const item of list) seenNotifications.current.add(item.id); try { sessionStorage.setItem('dsan.seen.notifications', JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ } }
       }, [state?.notifications, pushToast])
       const refresh = useCallback(async () => {
         try {

@@ -2067,7 +2067,7 @@ function buildState(root) {
   return {
     configured: true,
     root,
-    notifications: Array.isArray(manifest.ui?.notifications) ? manifest.ui.notifications : [],
+    notifications: (() => { const live = readJson(path.join(root, META_DIR, 'notifications.json'), []); return Array.isArray(live) && live.length ? live : (Array.isArray(manifest.ui?.notifications) ? manifest.ui.notifications : []) })(),
     settings: {
       autoArchive: cfg.autoArchive,
       calendar: cfg.calendar === 'single' ? 'single' : 'double',
