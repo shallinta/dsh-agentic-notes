@@ -16,7 +16,7 @@ export const nativeAgentToolSchemas = [
   { name: 'write_note', description: '写入已有笔记的完整内容。', parameters: object({ path: string('笔记路径'), content: string('完整 Markdown') }, ['path', 'content']) },
   { name: 'rename_note', description: '重命名笔记。', parameters: object({ path: string('笔记路径'), title: string('新标题') }, ['path', 'title']) },
   { name: 'move_note', description: '移动笔记到另一个笔记本。', parameters: object({ path: string('笔记路径'), notebook: string('目标笔记本'), title: string('可选新标题') }, ['path', 'notebook']) },
-  { name: 'delete_note', description: '删除笔记，执行前必须确认。', parameters: object({ path: string('笔记路径') }, ['path']) },
+  { name: 'delete_note', description: '删除单篇笔记，默认可直接执行；一次删除多篇需要确认。', parameters: object({ path: string('笔记路径') }, ['path']) },
   { name: 'update_frontmatter', description: '更新笔记的 tags、summary 等 frontmatter。', parameters: object({ path: string('笔记路径'), set: { type: 'object' }, unset: { type: 'array', items: { type: 'string' } } }, ['path']) },
   { name: 'todo_add', description: '新增待办。', parameters: object({ text: string('待办内容'), tags: { type: 'array', items: { type: 'string' } } }, ['text']) },
   { name: 'todo_update', description: '更新待办。', parameters: object({ id: string('待办 ID'), text: string('新内容'), tags: { type: 'array', items: { type: 'string' } }, done: { type: 'boolean' } }, ['id']) },
@@ -28,7 +28,7 @@ export const nativeAgentToolSchemas = [
   { name: 'set_privacy', description: '开关首页隐私模式。', parameters: object({ enabled: { type: 'boolean' } }, ['enabled']) },
   {
     name: 'stage_operations',
-    description: '暂存一组笔记载体操作，等待用户确认。',
+    description: '暂存一组操作；仅长笔记、批量删除/移动、设置修改需要用户确认。',
     parameters: object({
       operations: {
         type: 'array',
@@ -51,7 +51,7 @@ export const nativeAgentToolSchemas = [
       },
     }, ['operations']),
   },
-  { name: 'apply_operations', description: '提交一组操作；破坏性操作仍需要确认。', parameters: object({ operations: { type: 'array', items: { type: 'object' } } }, ['operations']) },
+  { name: 'apply_operations', description: '提交一组操作；服务端会按统一规则决定是否直接执行或转待确认。', parameters: object({ operations: { type: 'array', items: { type: 'object' } } }, ['operations']) },
   { name: 'create_surface', description: '创建进度、问题或确认提示。', parameters: object({ type: { type: 'string', enum: ['toast', 'modal'] }, title: string('标题'), body: string('正文'), kind: string('progress/question/confirm'), options: { type: 'array', items: { type: 'object' } }, allowFreeText: { type: 'boolean' }, awaitResponse: { type: 'boolean' } }, ['type', 'title', 'body']) },
   { name: 'update_surface', description: '更新当前会话的提示内容。', parameters: object({ surfaceId: string('surface ID'), title: string('标题'), body: string('正文'), options: { type: 'array', items: { type: 'object' } }, kind: string('提示类型') }, ['surfaceId']) },
   { name: 'close_surface', description: '关闭当前会话的提示。', parameters: object({ surfaceId: string('surface ID') }, ['surfaceId']) },

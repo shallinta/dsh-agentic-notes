@@ -145,3 +145,29 @@ test('500 code points triggers confirmation while 499 does not', async () => {
   await assert.rejects(() => applyAgentOperations(root, [{ op: 'write', path: 'Test/n500.md', content: note(10) }], 'test'), /需要用户确认/)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('two single-note notebook deletes require confirmation together', async () => {
+  const root = tempRoot()
+  fs.mkdirSync(path.join(root, 'Two'))
+  fs.writeFileSync(path.join(root, 'Test', 'b.md'), '# b\n')
+  fs.writeFileSync(path.join(root, 'Two', 'c.md'), '# c\n')
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.notebooks.push({ name: 'Two' })
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'deleteNotebook', notebook: 'Test' },
+    { op: 'deleteNotebook', notebook: 'Two' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('duplicate operations are deduped regardless of key order', async () => {
+  const root = tempRoot()
+  await applyAgentOperations(root, [
+    { op: 'todoAdd', text: 'same', tags: ['x'] },
+    { tags: ['x'], text: 'same', op: 'todoAdd' },
+  ], 'test', null, true)
+  const todo = JSON.parse(fs.readFileSync(path.join(root, '便笺', 'todo.json'), 'utf8'))
+  assert.equal(todo.items.filter((item) => item.text === 'same').length, 1)
+  fs.rmSync(root, { recursive: true, force: true })
+})
