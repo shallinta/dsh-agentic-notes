@@ -3226,6 +3226,28 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
         errorsLocal.push(String(err?.message ?? err))
       }
     }
+    if (errorsLocal.length && appliedLocal.length) {
+      const beforeFiles = new Set(snapshot.files || [])
+      for (const rel of beforeFiles) {
+        const src = path.join(snapshot.dir, 'files', ...String(rel).split('/'))
+        if (fs.existsSync(src)) {
+          const dest = absPath(root, rel)
+          fs.mkdirSync(path.dirname(dest), { recursive: true })
+          fs.copyFileSync(src, dest)
+        }
+      }
+      for (const rel of listMarkdownFiles(root)) {
+        if (!beforeFiles.has(rel)) { try { fs.unlinkSync(absPath(root, rel)) } catch { /* ignore */ } }
+      }
+      currentManifest.notebooks = notebooksBefore
+      currentManifest.noteOrder = noteOrderBefore
+      currentManifest.stickies = stickiesBefore
+      saveManifest(root, currentManifest)
+      writeJson(todoPath(root), todoBefore)
+      writeJson(CONFIG_FILE, configBefore)
+      fs.rmSync(snapshot.dir, { recursive: true, force: true })
+      return { applied: [], errors: errorsLocal, runId: null, remindersCreated: [] }
+    }
     if (!appliedLocal.length) {
       fs.rmSync(snapshot.dir, { recursive: true, force: true })
       return { applied: [], errors: errorsLocal, runId: null, remindersCreated }

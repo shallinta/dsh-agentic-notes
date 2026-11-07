@@ -76,7 +76,7 @@ test('partial batch reports errors without hiding them', async () => {
   ], 'test', null, true)
   assert.equal(out.errors.length, 1)
   assert.match(out.errors[0], /找不到/)
-  assert.equal(fs.existsSync(path.join(root, 'Test', 'ok.md')), true)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'ok.md')), false)
   fs.rmSync(root, { recursive: true, force: true })
 })
 
