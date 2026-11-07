@@ -40,7 +40,9 @@ window.__ModuleLoader__.load({
 .dsan-attachments{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px 0 0}
 .dsan-attachment{position:relative;width:42px;height:42px;margin:0 6px 6px 0;overflow:visible}
 .dsan-attachment img{width:100%;height:100%;object-fit:cover;display:block;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
-.dsan-surface-stack{position:fixed;right:14px;bottom:calc(14px + var(--dsan-toast-height, 0px));z-index:90;display:flex;flex-direction:column;gap:14px;align-items:flex-end;padding:8px;background:transparent;overflow:visible;isolation:isolate}
+.dsan-surface-stack.dsan-unified-stack{flex-direction:column-reverse}
+.dsan-unified-stack .dsan-toast{width:360px;max-width:calc(100vw - 44px)}
+.dsan-surface-stack{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:14px;align-items:flex-end;padding:8px;background:transparent;overflow:visible;isolation:isolate}
 .dsan-surface-toast{position:relative;right:auto;bottom:auto;z-index:0;width:360px;max-width:calc(100vw - 44px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 4px 14px -2px rgba(0,0,0,.18);padding:13px}
 .dsan-surface-toast .x{position:absolute;bottom:8px;right:8px;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;border-radius:6px}
 .dsan-progress-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary);margin-top:5px}
@@ -890,20 +892,14 @@ window.__ModuleLoader__.load({
           footer ? h('div', { className: 'dsan-modal-foot' }, footer) : null))
     }
 
-    function Toasts({ items, dismiss }) {
-      const ref = useRef(null)
-      useEffect(() => {
-        const height = ref.current ? ref.current.getBoundingClientRect().height : 0
-        document.documentElement.style.setProperty('--dsan-toast-height', `${height ? height + 14 : 0}px`)
-        return () => { document.documentElement.style.setProperty('--dsan-toast-height', '0px') }
-      }, [items])
-      return h('div', { className: 'dsan-toasts', ref }, items.map((toast) => h('div', { key: toast.id, className: 'dsan-toast' },
+    function ToastCard({ toast, dismiss }) {
+      return h('div', { className: 'dsan-toast' },
         h('div', { className: 'tt' }, toast.title),
         toast.body ? h('div', { className: 'tb' }, toast.body) : null,
         h('div', { className: 'dsan-toast-foot' },
           toast.actions?.length ? h('div', { className: 'ta' }, toast.actions.map((action, idx) =>
             h('button', { key: idx, className: cls('dsan-btn small', action.primary && 'primary'), title: action.title || undefined, onClick: () => { dismiss(toast.id); action.onClick?.() } }, action.label))) : h('span', { className: 'sp' }),
-          h('button', { className: 'x', onClick: () => { dismiss(toast.id); toast.onDismiss?.() }, 'aria-label': '关闭' }, '×')))))
+          h('button', { className: 'x', onClick: () => { dismiss(toast.id); toast.onDismiss?.() }, 'aria-label': '关闭' }, '×')))
     }
 
     function Field({ label, children }) {
@@ -3127,7 +3123,7 @@ window.__ModuleLoader__.load({
         const onlyView = actions.length > 0 && actions.every((action) => action.label === '查看')
         const auto = actions.length === 0 || onlyView
         const timeout = Number.isFinite(toast.duration) ? toast.duration : 10 * 60 * 1000
-        setToasts((prev) => prev.some((item) => item.id === id) ? prev : [...prev, { ...toast, id, auto }].slice(-3))
+        setToasts((prev) => prev.some((item) => item.id === id) ? prev : [...prev, { ...toast, id, auto, at: toast.at || Date.now() }].slice(-3))
         if (auto) setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), timeout)
       }, [])
       const notificationsInitialized = useRef(false)
@@ -4114,7 +4110,10 @@ window.__ModuleLoader__.load({
               api('sticky.save', { id: floatingSticky.id, minimized: true }).then(() => { setPageMinSticky(floatingSticky); setPageSticky(null) })
             },
           })) : null,
-        h(Toasts, { items: toasts, dismiss }),
+        h('div', { className: 'dsan-surface-stack dsan-unified-stack' }, ...[
+          ...toasts.map((toast) => ({ at: toast.at || 0, node: h(ToastCard, { key: toast.id, toast, dismiss }) })),
+          ...surfaces.filter((surface) => surface.type === 'toast').map((surface) => ({ at: Date.parse(surface.createdAt) || 0, node: renderSurface(surface) })),
+        ].sort((a, b) => a.at - b.at).slice(-3).map((item) => item.node)),
         dueReminders.length ? h('div', { className: 'dsan-reminder-stack' },
           dueReminders.map((reminder) => h(ReminderCard, {
             key: reminder.key, item: reminder,
@@ -4124,7 +4123,6 @@ window.__ModuleLoader__.load({
             onStopPeriodic: () => stopPeriodicReminder(reminder),
           }))) : null,
         modal?.kind === 'newNotebook' ? h(NotebookModal, { onClose: () => setModal(null), pushToast, refresh }) : null,
-        h('div', { className: 'dsan-surface-stack' }, ...surfaces.filter((surface) => surface.type === 'toast').map(renderSurface)),
         ...surfaces.filter((surface) => surface.type !== 'toast').map(renderSurface),
         agentReplyOpen && agentThread ? h(AgentReplyModal, {
           thread: agentThread,
