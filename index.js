@@ -3757,6 +3757,21 @@ function reactProtocolError(reason) {
   ].join('\n')
 }
 
+function isSimpleAgentBatch(operations) {
+  const list = Array.isArray(operations) ? operations : []
+  let deletes = 0
+  let moves = 0
+  for (const op of list) {
+    const kind = String(op?.op || '')
+    if (kind === 'settingsUpdate' || kind === 'setPrivacyMode') return false
+    if (kind === 'delete' || kind === 'deleteNotebook' || kind === 'fileDelete') deletes += 1
+    if (kind === 'move' || kind === 'fileMove') moves += 1
+    if (kind === 'write' && String(op.content || '').length > 500) return false
+    if (kind === 'create' && String(op.body || '').length > 500) return false
+  }
+  return deletes <= 1 && moves <= 1
+}
+
 async function runNativeAgent(ctx, root, manifest, args, job) {
   const instruction = String(args.instruction || '').trim()
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
@@ -3899,6 +3914,19 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       return
     }
     job.surfaces = (job.surfaces || []).map((surface) => surface.kind === 'progress' ? { ...surface, status: 'closed' } : surface)
+    if (staged.length && isSimpleAgentBatch(staged)) {
+      try {
+        const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, true)
+        if (!out.errors?.length) {
+          job.staged = []
+          job.status = 'done'
+          job.message = '处理完成'
+          job.result = { reply: result.text, applied: out.applied || [], errors: [], runId: out.runId || null, files: [] }
+          saveAgentSession(root, job)
+          return
+        }
+      } catch { /* fall through to review */ }
+    }
     job.message = '处理完成'
     if (staged.length) {
       const latest = readManifest(root)
