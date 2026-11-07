@@ -57,6 +57,10 @@ http://127.0.0.1:53152/dsh-agentic-notes/mcp
 - `read_todo`
 - `read_stickies`
 
+提示：
+
+- `notify`：显示一条全局 toast
+
 写入（直接落盘）：
 
 - `create_note`
