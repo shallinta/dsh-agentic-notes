@@ -3811,7 +3811,7 @@ window.__ModuleLoader__.load({
         const finalText = text || '图片记录'
         rememberCapture(raw || finalText)
         const launchId = `capture-launch-${Date.now()}`
-        setSurfaces((prev) => [...prev, { id: launchId, kind: 'capture-launch', type: 'toast', title: '已记到日记', body: '正在归档…', status: 'waiting' }])
+        setSurfaces((prev) => [...prev, { id: launchId, kind: 'capture-launch', type: 'toast', title: '已记到日记', body: '正在归档…', status: 'waiting', createdAt: new Date().toISOString() }])
         setTimeout(() => setSurfaces((prev) => prev.filter((item) => item.id !== launchId)), 5000)
         try {
           const res = await api('capture', { text: finalText, images })

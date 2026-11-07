@@ -64,7 +64,13 @@ function withNotifyLock(root, task) {
     const pid = lockPid(lock)
     if (pid > 0) {
       try { process.kill(pid, 0) } catch {
-        if (trySymlinkLock(recovery)) {
+        let recovered = trySymlinkLock(recovery)
+        if (!recovered) {
+          const recoveryPid = lockPid(recovery)
+          if (recoveryPid > 0) { try { process.kill(recoveryPid, 0) } catch { removeIfPID(recovery, recoveryPid) } } else removeIfPID(recovery, 0)
+          recovered = trySymlinkLock(recovery)
+        }
+        if (recovered) {
           try {
             const again = lockPid(lock)
             if (again === pid || !again) removeIfPID(lock, again)

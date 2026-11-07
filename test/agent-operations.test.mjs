@@ -13,10 +13,11 @@ function tempRoot() {
   return root
 }
 
-test('destructive operation requires confirmation', async () => {
+test('long note changes require confirmation', async () => {
   const root = tempRoot()
-  await assert.rejects(() => applyAgentOperations(root, [{ op: 'delete', path: 'Test/a.md' }], 'test'), /必须先确认/)
-  assert.equal(fs.existsSync(path.join(root, 'Test/a.md')), true)
+  fs.writeFileSync(path.join(root, 'Test', 'long.md'), `# long\n\n${'字'.repeat(1000)}\n`)
+  await assert.rejects(() => applyAgentOperations(root, [{ op: 'write', path: 'Test/long.md', content: '# short\n' }], 'test'), /需要用户确认/)
+  assert.match(fs.readFileSync(path.join(root, 'Test', 'long.md'), 'utf8'), /字{1000}/)
   fs.rmSync(root, { recursive: true, force: true })
 })
 
@@ -131,5 +132,16 @@ test('MCP concurrent writes with the same expected hash have one winner', async 
   ])
   assert.equal(results.filter((item) => item.status === 'fulfilled').length, 1)
   assert.equal(results.filter((item) => item.status === 'rejected').length, 1)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('500 code points triggers confirmation while 499 does not', async () => {
+  const root = tempRoot()
+  const note = (n) => `# t\n\n${'字'.repeat(n)}\n`
+  fs.writeFileSync(path.join(root, 'Test', 'n490.md'), note(490))
+  fs.writeFileSync(path.join(root, 'Test', 'n500.md'), note(500))
+  const ok = await applyAgentOperations(root, [{ op: 'write', path: 'Test/n490.md', content: note(10) }], 'test')
+  assert.equal(ok.errors.length, 0)
+  await assert.rejects(() => applyAgentOperations(root, [{ op: 'write', path: 'Test/n500.md', content: note(10) }], 'test'), /需要用户确认/)
   fs.rmSync(root, { recursive: true, force: true })
 })
