@@ -2892,6 +2892,7 @@ window.__ModuleLoader__.load({
         if (!state?.root) return
         liveRoot = state.root
         setSurfaces((prev) => prev.filter((item) => !item.root || item.root === liveRoot))
+        setToasts((prev) => prev.filter((item) => !item.notificationId))
       }, [state?.root])
       useEffect(() => {
         const timer = setInterval(() => setSurfaces((prev) => prev.filter((item) => !item.expiresAt || item.expiresAt > Date.now())), 60000)
@@ -3150,10 +3151,12 @@ window.__ModuleLoader__.load({
         }, 2000)
         return () => clearInterval(timer)
       }, [])
+      const stateRequestSeq = useRef(0)
       const refresh = useCallback(async () => {
+        const seq = ++stateRequestSeq.current
         try {
           const next = await api('state')
-          setState(next)
+          if (seq === stateRequestSeq.current) setState(next)
           return next
         } catch (err) {
           return null

@@ -40,21 +40,30 @@ function sleep(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0
 function withNotifyLock(root, task) {
   const lock = path.join(root, NOTIFY_LOCK)
   fs.mkdirSync(path.dirname(lock), { recursive: true })
-  let fd = null
+  let acquired = false
   for (let i = 0; i < 200; i += 1) {
-    try { fd = fs.openSync(lock, 'wx'); break } catch {
+    try { fs.symlinkSync(String(process.pid), lock); acquired = true; break } catch {
       try {
-        const pid = Number(fs.readFileSync(lock, 'utf8').trim())
-        if (pid > 0) { try { process.kill(pid, 0) } catch { fs.unlinkSync(lock); continue } }
+        let pid = 0
+        try { pid = Number(fs.readlinkSync(lock)) } catch { pid = Number(fs.readFileSync(lock, 'utf8').trim()) }
+        if (!pid) {
+          try { if (Date.now() - fs.statSync(lock).mtimeMs > 1000) fs.unlinkSync(lock) } catch { /* ignore */ }
+        }
+        if (pid > 0) {
+          try { process.kill(pid, 0) } catch {
+            let current = ''
+            try { current = fs.readlinkSync(lock) } catch { try { current = fs.readFileSync(lock, 'utf8').trim() } catch { /* released */ } }
+            if (current === String(pid)) fs.unlinkSync(lock)
+            continue
+          }
+        }
       } catch { /* lock may have been released */ }
       sleep(5)
     }
   }
-  if (fd === null) throw new Error('通知队列繁忙')
-  try { fs.writeFileSync(lock, String(process.pid)) } catch { /* ignore */ }
+  if (!acquired) throw new Error('通知队列繁忙')
   try { return task() } finally {
-    try { fs.closeSync(fd) } catch { /* ignore */ }
-    try { fs.unlinkSync(lock) } catch { /* ignore */ }
+    try { if (fs.readlinkSync(lock) === String(process.pid)) fs.unlinkSync(lock) } catch { /* ignore */ }
   }
 }
 function readNotifications(root) {
