@@ -2194,6 +2194,8 @@ window.__ModuleLoader__.load({
 
     function SettingsModal({ state, onClose, ctx, pushToast, refresh, onRootChanged, onReviewPending }) {
       const [pendingProposals, setPendingProposals] = useState([])
+      const [mcpToken, setMcpToken] = useState(state.settings?.mcpToken || '')
+      const [mcpVisible, setMcpVisible] = useState(false)
       const [autoArchive, setAutoArchive] = useState(state.settings?.autoArchive !== false)
       const [showAgentSessions, setShowAgentSessions] = useState(state.settings?.showAgentSessions === true)
       const [calendar, setCalendar] = useState(state.settings?.calendar || 'double')
@@ -2217,6 +2219,7 @@ window.__ModuleLoader__.load({
       const [reminderSpeechVolume, setReminderSpeechVolume] = useState(state.settings?.reminderSpeechVolume || 100)
       const [stickyTransparency, setStickyTransparency] = useState(state.settings?.stickyTransparency ?? (Number.isFinite(Number(state.settings?.stickyOpacity)) ? 100 - Number(state.settings.stickyOpacity) : 55))
       const [todoTransparency, setTodoTransparency] = useState(state.settings?.todoTransparency ?? 36)
+      const mcpUrl = `${location.origin}${state.settings?.mcpPath || '/dsh-agentic-notes/mcp'}`
       useEffect(() => { api('agent.pending.list').then(({ items }) => setPendingProposals(items || [])).catch(() => { }) }, [])
       const [notificationPermission, setNotificationPermission] = useState(() => typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
       const [provider, setProvider] = useState(state.settings?.model?.provider || '')
@@ -2486,6 +2489,13 @@ window.__ModuleLoader__.load({
           })),
           h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。')),
 
+        h(SettingsSection, { title: 'MCP 连接', desc: '外部 AI 通过该地址调用随记；写入仍是待确认提案。' },
+          h('div', { className: 'dsan-set-hint', style: { marginBottom: 8, wordBreak: 'break-all' } }, mcpUrl),
+          h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
+            h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
         pendingProposals.length ? h(SettingsSection, { title: '外部提案', desc: '其他 MCP 客户端只能提出变更，必须在这里确认。' },
           ...pendingProposals.slice(0, 5).map((item) => h('div', { key: item.id, style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
             h('div', { style: { flex: 1, minWidth: 0, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, item.brief || `${item.summary?.length || 0} 项改动`),

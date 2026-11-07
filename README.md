@@ -208,6 +208,24 @@
 - 设置项即时生效，没有保存按钮。
 - 模型服务、provider 和 model 可从 DSH 已配置的服务中选择。
 
+### 给其他 AI 使用 MCP
+
+随记在 DSH 的本地 Web 服务上提供 HTTP MCP：
+
+```text
+http://127.0.0.1:53152/dsh-agentic-notes/mcp
+```
+
+在设置页「MCP 连接」查看地址和 Token。外部 AI 使用：
+
+```text
+Authorization: Bearer <Token>
+```
+
+MCP 支持读取、搜索和提交待确认的变更。变更不会直接写入，必须回到随记设置页「外部提案」确认。
+
+安装时附带 `skills/suiji-mcp/SKILL.md`，可以给支持 skill 的 AI 使用。
+
 ## 安装
 
 随记是 DSH 插件，需要先有 DSH 桌面端或 Web 端。

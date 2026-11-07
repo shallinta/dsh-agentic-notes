@@ -22,7 +22,9 @@
     "native-agent-loop.js",
     "native-agent-tools.js",
     "agent-service.js",
-    "mcp-server.js"
+    "mcp-server.js",
+    "mcp-core.js",
+    "skills/*"
   ],
   "dsh": {
     "bundle": {

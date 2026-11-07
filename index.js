@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 import { runNativeToolLoop, validateToolArguments } from './native-agent-loop.js'
 import { nativeAgentToolSchemas, createNativeToolExecutor } from './native-agent-tools.js'
 import { createAgentService } from './agent-service.js'
+import { mcpTools, callMcpTool } from './mcp-core.js'
 
 export const inject = ['webServer', 'connection']
 
@@ -21,6 +22,7 @@ const DSH_HOME = process.env.DSH_HOME || path.join(os.homedir(), '.dsh')
 const CONFIG_FILE = path.join(DSH_HOME, 'dsh-agentic-notes.json')
 const API_PATH = '/dsh-agentic-notes/api'
 const IMG_PATH = '/dsh-agentic-notes/img'
+const MCP_PATH = '/dsh-agentic-notes/mcp'
 const SOUND_PATH = '/dsh-agentic-notes/sound'
 const ASSET_PATH = '/dsh-agentic-notes/asset'
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
@@ -271,6 +273,7 @@ const DEFAULT_CONFIG = {
   showAgentSessions: false,
   agentEngine: 'native',
   agentShadow: false,
+  mcpToken: '',
   agentLogRetentionDays: 7,
   agentLogCleanupIntervalDays: 30,
   systemNotifications: false,
@@ -2068,6 +2071,8 @@ function buildState(root) {
       showAgentSessions: cfg.showAgentSessions === true,
       agentEngine: cfg.agentEngine === 'json' ? 'json' : 'native',
       agentShadow: cfg.agentShadow === true,
+      mcpToken: cfg.mcpToken || '',
+      mcpPath: MCP_PATH,
       toolResultMaxChars: Math.max(1000, Math.min(200000, Number(cfg.toolResultMaxChars) || 20000)),
       webFetchMaxChars: Math.max(1000, Math.min(200000, Number(cfg.webFetchMaxChars) || 16000)),
       readNoteMaxChars: Math.max(1000, Math.min(200000, Number(cfg.readNoteMaxChars) || 20000)),
@@ -3712,16 +3717,20 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     staged.push(operation)
     return { staged: true, count: staged.length }
   }
+  const mcpRead = (name, params) => {
+    const result = callMcpTool(root, name, params || {})
+    return result.content?.[0]?.text ?? ''
+  }
   const service = createAgentService({
-    listNotebooks: async () => scope.notebooks,
-    listNotes: async ({ notebook }) => listNoteFiles(root, String(notebook || context.notebook || '')),
+    listNotebooks: async () => JSON.parse(mcpRead('list_notebooks') || '[]'),
+    listNotes: async ({ notebook }) => JSON.parse(mcpRead('list_notes', { notebook: String(notebook || context.notebook || '') }) || '[]'),
     readNote: async ({ path: notePath }) => {
       const rel = normalizeAgentRel(notePath)
       if (context.view === 'note' && rel !== normalizeAgentRel(context.path)) throw new Error('当前打开的是单篇笔记，只能读取这一篇')
-      return { path: rel, content: readNote(root, rel).content }
+      return { path: rel, content: mcpRead('read_note', { path: rel }) }
     },
-    readTodo: async () => readTodo(root).items,
-    readStickies: async () => readStickies(root, manifest),
+    readTodo: async () => JSON.parse(mcpRead('read_todo') || '{"items":[]}').items,
+    readStickies: async () => JSON.parse(mcpRead('read_stickies') || '[]'),
     readSettings: async () => readConfig(),
     webFetch: async ({ url }) => fetchWebText(String(url || ''), Number(readConfig().webFetchMaxChars) || 16000, Number(readConfig().webTimeoutMs) || 60000),
     createNote: async (a) => stage({ op: 'create', notebook: a.notebook, title: a.title, body: a.body }),
@@ -4446,6 +4455,34 @@ export function apply(ctx) {
   ctx.effect(() => startReminderBackground())
 
   const disposers = []
+  if (!readConfig().mcpToken) saveConfig({ mcpToken: crypto.randomBytes(24).toString('hex') })
+  disposers.push(ctx.webServer.register({
+    kind: 'exact',
+    path: MCP_PATH,
+    handler: async (req, res) => {
+      const origin = String(req.headers.origin || '')
+      if (origin && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) { res.statusCode = 403; res.end('forbidden'); return }
+      const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+      if (!token || token !== readConfig().mcpToken) { res.statusCode = 401; res.end('unauthorized'); return }
+      if (req.method === 'GET') { res.statusCode = 405; res.end(); return }
+      if (req.method !== 'POST') { res.statusCode = 405; res.end(); return }
+      let payload
+      try { payload = JSON.parse(await readBody(req) || '{}') } catch { res.statusCode = 400; res.end(); return }
+      const send = (body) => { res.statusCode = 200; res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(body)) }
+      if (!payload.id) { res.statusCode = 202; res.end(); return }
+      try {
+        const root = rootOf()
+        if (!root) throw new Error('还没有选择笔记目录')
+        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.1.0' } } })
+        if (payload.method === 'ping') return send({ jsonrpc: '2.0', id: payload.id, result: {} })
+        if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: mcpTools } })
+        if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: callMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
+        throw new Error(`未知方法：${payload.method}`)
+      } catch (err) {
+        send({ jsonrpc: '2.0', id: payload.id, error: { code: -32603, message: String(err?.message ?? err) } })
+      }
+    },
+  }))
   disposers.push(ctx.webServer.register({
     kind: 'exact',
     path: API_PATH,
@@ -5139,6 +5176,11 @@ async function dispatchUnlocked(ctx, op, args) {
         saveAgentSession(root, job)
       }
       return { ok: true, closed: surface.id }
+    }
+    case 'mcp.token.regenerate': {
+      const token = crypto.randomBytes(24).toString('hex')
+      saveConfig({ mcpToken: token })
+      return { token }
     }
     case 'agent.pending.list': {
       const dir = pendingDir(root)

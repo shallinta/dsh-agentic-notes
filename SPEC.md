@@ -173,11 +173,23 @@ updated: 2026-11-04T09:20:00+08:00
 - 界面目前为中文。
 - 归档队列串行执行，避免同时改同一篇笔记。
 
-## 十一、第一版范围
+## 十一、MCP HTTP
+
+- 插件启动时生成随机 `mcpToken`，保存在全局配置。
+- 地址固定为 `/dsh-agentic-notes/mcp`。
+- 只接受 Bearer token；无 token 返回 401。
+- 有 Origin 时只允许 `127.0.0.1` / `localhost`。
+- 支持 `initialize`、`ping`、`tools/list`、`tools/call`。
+- 工具：list_notebooks、list_notes、search_notes、read_note、read_todo、read_stickies、propose_operations、pending_status、cancel_pending。
+- 写入只生成 pending，确认仍由插件设置页完成。
+- 设置页显示地址、Token，可显示、复制、重新生成。
+- stdio `mcp-server.js` 与 HTTP 共用 `mcp-core.js`。
+
+## 十二、第一版范围
 
 一次做全：首页、笔记本、日历、阅读/编辑、快捷记录与归档、链接、便笺、待办、设置、废纸篓、冲突处理。
 
-## 十二、写死的默认值
+## 十三、写死的默认值
 
 - 日记一册 5000 行。
 - 笔记标题最长 60 字。
