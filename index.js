@@ -5042,7 +5042,7 @@ async function dispatchUnlocked(ctx, op, args) {
         if (job) { job.status = 'cancelled'; job.message = '用户取消了任务'; job.question = null; job.awaitingSurfaceId = ''; job.activeSurfaceId = ''; saveAgentSession(root, job) }
         return { ok: true, cancelled: true }
       }
-      if (surface.kind === 'confirm') {
+      if (surface.kind === 'confirm' && surface.pendingId) {
         surface.status = 'answered'; surface.answer = answer; surface.updatedAt = nowIso()
         if (!['confirm', 'approve'].includes(answer.optionId)) return { ok: true, outcome: await dispatch(ctx, 'agent.cancel', { id: surface.pendingId }) }
         const outcome = await dispatch(ctx, 'agent.confirm', { id: surface.pendingId })
