@@ -5296,7 +5296,10 @@ async function dispatchUnlocked(ctx, op, args) {
           if (latestPending.status && latestPending.status !== 'waiting') throw new Error('提案已取消或已处理')
           if (latestPending.source === 'mcp' && latestPending.signature && proposalSignature(root) !== latestPending.signature) throw new Error('确认前笔记已有改动，请重新生成方案')
         })
-        fs.rmSync(file, { force: true })
+        if (pending.source === 'mcp') {
+          pending.status = 'confirmed'; pending.confirmedAt = nowIso(); pending.result = outcome
+          writeJson(file, pending)
+        } else fs.rmSync(file, { force: true })
         return { ...outcome, reply: pending.reply || '' }
       } finally {
         confirmLocks.delete(id)

@@ -79,3 +79,10 @@ test('partial batch reports errors without hiding them', async () => {
   assert.equal(fs.existsSync(path.join(root, 'Test', 'ok.md')), true)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('guard runs before any write', async () => {
+  const root = tempRoot()
+  await assert.rejects(() => applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'blocked', body: 'x' }], 'test', null, true, () => { throw new Error('cancelled') }), /cancelled/)
+  assert.equal(fs.existsSync(path.join(root, 'Test', 'blocked.md')), false)
+  fs.rmSync(root, { recursive: true, force: true })
+})
