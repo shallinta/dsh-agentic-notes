@@ -180,8 +180,9 @@ updated: 2026-11-04T09:20:00+08:00
 - 只接受 Bearer token；无 token 返回 401。
 - 有 Origin 时只允许 `127.0.0.1` / `localhost`。
 - 支持 `initialize`、`ping`、`tools/list`、`tools/call`。
-- 工具：list_notebooks、list_notes、search_notes、read_note、read_todo、read_stickies、propose_operations、pending_status、cancel_pending。
-- 写入只生成 pending，确认仍由插件设置页完成。
+- 工具：list_notebooks、list_notes、search_notes、read_note、read_todo、read_stickies，以及 create_note、write_note、rename_note、move_note、delete_note、update_frontmatter、todo_*、memo_*。
+- MCP 写入直接落盘。
+- 设置读写不通过 MCP 暴露。
 - 设置页显示地址、Token，可显示、复制、重新生成。
 - stdio `mcp-server.js` 与 HTTP 共用 `mcp-core.js`。
 

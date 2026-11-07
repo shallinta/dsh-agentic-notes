@@ -3912,6 +3912,46 @@ async function runAgentTurn(ctx, root, manifest, args, job) {
   }
 }
 
+const MCP_WRITE_TOOLS = [
+  ['create_note', '在笔记本新建笔记', { notebook: 'string', title: 'string', body: 'string' }, ['notebook', 'title', 'body']],
+  ['write_note', '写入已有笔记', { path: 'string', content: 'string' }, ['path', 'content']],
+  ['rename_note', '重命名笔记', { path: 'string', title: 'string' }, ['path', 'title']],
+  ['move_note', '移动笔记', { path: 'string', notebook: 'string', title: 'string' }, ['path', 'notebook']],
+  ['delete_note', '删除笔记', { path: 'string' }, ['path']],
+  ['update_frontmatter', '更新 frontmatter', { path: 'string', set: 'object', unset: 'array' }, ['path']],
+  ['todo_add', '新增待办', { text: 'string', tags: 'array' }, ['text']],
+  ['todo_update', '更新待办', { id: 'string', text: 'string', tags: 'array', done: 'boolean' }, ['id']],
+  ['todo_delete', '删除待办', { id: 'string' }, ['id']],
+  ['memo_create', '新建便笺', { items: 'array', color: 'string' }, ['items']],
+  ['memo_update', '更新便笺', { id: 'string', items: 'array', color: 'string' }, ['id']],
+  ['memo_delete', '删除便笺', { id: 'string' }, ['id']],
+].map(([name, description, props, required]) => ({
+  name, description,
+  inputSchema: { type: 'object', properties: Object.fromEntries(Object.entries(props).map(([key, type]) => [key, { type }])), required, additionalProperties: false },
+}))
+
+async function callHttpMcpTool(root, name, args = {}) {
+  const readNames = new Set(['list_notebooks', 'list_notes', 'search_notes', 'read_note', 'read_todo', 'read_stickies'])
+  if (readNames.has(name)) return callMcpTool(root, name, args)
+  let operation = null
+  if (name === 'create_note') operation = { op: 'create', notebook: args.notebook, title: args.title, body: args.body }
+  else if (name === 'write_note') operation = { op: 'write', path: args.path, content: args.content }
+  else if (name === 'rename_note') operation = { op: 'rename', path: args.path, title: args.title }
+  else if (name === 'move_note') operation = { op: 'move', path: args.path, notebook: args.notebook, title: args.title }
+  else if (name === 'delete_note') operation = { op: 'delete', path: args.path }
+  else if (name === 'update_frontmatter') operation = { op: 'frontmatter', path: args.path, set: args.set, unset: args.unset }
+  else if (name === 'todo_add') operation = { op: 'todoAdd', text: args.text, tags: args.tags }
+  else if (name === 'todo_update') operation = { op: 'todoUpdate', id: args.id, text: args.text, tags: args.tags, done: args.done }
+  else if (name === 'todo_delete') operation = { op: 'todoDelete', id: args.id }
+  else if (name === 'memo_create') operation = { op: 'memoCreate', items: args.items, color: args.color }
+  else if (name === 'memo_update') operation = { op: 'memoUpdate', id: args.id, items: args.items, color: args.color }
+  else if (name === 'memo_delete') operation = { op: 'memoDelete', id: args.id }
+  else throw new Error(`未知工具：${name}`)
+  const out = await applyAgentOperations(root, [operation], 'MCP 外部写入', null, true)
+  if (out.errors?.length) throw new Error(out.errors.join('；'))
+  return { content: [{ type: 'text', text: JSON.stringify({ ok: true, applied: out.applied, runId: out.runId }) }] }
+}
+
 async function runNativeShadow(ctx, root, manifest, args, job) {
   appendAgentLog(root, job, 'shadow 启动')
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
@@ -4509,8 +4549,8 @@ export function apply(ctx) {
         if (!root) throw new Error('还没有选择笔记目录')
         if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.1.0' } } })
         if (payload.method === 'ping') return send({ jsonrpc: '2.0', id: payload.id, result: {} })
-        if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: mcpTools } })
-        if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: callMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
+        if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: [...mcpTools, ...MCP_WRITE_TOOLS] } })
+        if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: await callHttpMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
         throw new Error(`未知方法：${payload.method}`)
       } catch (err) {
         send({ jsonrpc: '2.0', id: payload.id, error: { code: -32603, message: String(err?.message ?? err) } })
@@ -5215,20 +5255,6 @@ async function dispatchUnlocked(ctx, op, args) {
       const token = crypto.randomBytes(24).toString('hex')
       saveConfig({ mcpToken: token })
       return { token }
-    }
-    case 'agent.pending.list': {
-      const dir = pendingDir(root)
-      if (!fs.existsSync(dir)) return { items: [] }
-      const items = fs.readdirSync(dir).filter((name) => name.endsWith('.json')).map((name) => {
-        const data = readJson(path.join(dir, name), null)
-        if (!data || data.status !== 'waiting') return null
-        if (data.source === 'mcp' && !data.signature) {
-          data.signature = proposalSignature(root)
-          writeJson(path.join(dir, name), data)
-        }
-        return { id: data.id || name.replace(/\.json$/, ''), source: data.source || 'agent', brief: data.brief || '', summary: data.summary || [], createdAt: data.createdAt || data.at || '' }
-      }).filter(Boolean).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-      return { items }
     }
     case 'review.surface': {
       const pendingId = String(args.id || '')

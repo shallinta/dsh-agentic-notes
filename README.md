@@ -222,7 +222,7 @@ http://127.0.0.1:53152/dsh-agentic-notes/mcp
 Authorization: Bearer <Token>
 ```
 
-MCP 支持读取、搜索和提交待确认的变更。变更不会直接写入，必须回到随记设置页「外部提案」确认。
+MCP 支持读取、搜索、创建、写入、改名、移动、删除笔记，以及待办和便笺操作。设置读写只在插件内部，不通过 MCP 暴露。
 
 安装时附带 `skills/suiji-mcp/SKILL.md`，可以给支持 skill 的 AI 使用。
 

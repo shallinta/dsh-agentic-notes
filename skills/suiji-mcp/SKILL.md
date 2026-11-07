@@ -57,22 +57,23 @@ http://127.0.0.1:53152/dsh-agentic-notes/mcp
 - `read_todo`
 - `read_stickies`
 
-写入：
+写入（直接落盘）：
 
-- `propose_operations`：创建待确认变更，不直接写盘
-- `pending_status`
-- `cancel_pending`
+- `create_note`
+- `write_note`
+- `rename_note`
+- `move_note`
+- `delete_note`
+- `update_frontmatter`
+- `todo_add` / `todo_update` / `todo_delete`
+- `memo_create` / `memo_update` / `memo_delete`
 
 ## 写入规则
 
-不要声称已经写入笔记。  
-`propose_operations` 只生成提案，必须让用户回随记设置页确认：
+这些工具会直接修改笔记，不会弹出确认。  
+调用前先读取目标内容，向用户说明将改什么。删除、移动、重命名前必须得到用户明确同意。
 
-```text
-设置 → 外部提案 → 审阅 → 确认执行
-```
-
-提案会校验路径、版本和操作白名单。用户确认前，文件不会改变。
+设置读写是插件内部工具，不通过 MCP 暴露。
 
 ## 安全
 

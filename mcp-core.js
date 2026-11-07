@@ -76,9 +76,6 @@ export const mcpTools = [
   { name: 'read_note', description: '读取一篇笔记', inputSchema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'], additionalProperties: false } },
   { name: 'read_todo', description: '读取待办', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'read_stickies', description: '读取便笺', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'propose_operations', description: '提出一组待确认变更，不直接写盘', inputSchema: { type: 'object', properties: { operations: { type: 'array', items: { type: 'object' } }, instruction: { type: 'string' } }, required: ['operations'], additionalProperties: false } },
-  { name: 'pending_status', description: '查询提案状态', inputSchema: { type: 'object', properties: { pendingId: { type: 'string' } }, required: ['pendingId'], additionalProperties: false } },
-  { name: 'cancel_pending', description: '取消未确认的提案', inputSchema: { type: 'object', properties: { pendingId: { type: 'string' } }, required: ['pendingId'], additionalProperties: false } },
 ]
 
 export function callMcpTool(root, name, args = {}) {
@@ -108,24 +105,31 @@ export function callMcpTool(root, name, args = {}) {
     })
     return { content: [{ type: 'text', text: JSON.stringify(stickies) }] }
   }
-  if (name === 'propose_operations') {
-    const operations = validateOperations(root, args.operations)
-    const id = crypto.randomUUID()
-    fs.mkdirSync(path.join(root, PENDING_DIR), { recursive: true })
-    const data = { id, source: 'mcp', kind: 'agent', status: 'waiting', at: new Date().toISOString(), instruction: String(args.instruction || ''), brief: `外部 MCP 提案：${operations.length} 项改动`, summary: operations.map((op) => `${op.op}: ${op.path || op.title || op.id || ''}`), signature: '', operations }
-    fs.writeFileSync(pendingFile(root, id), JSON.stringify(data, null, 2))
-    return { content: [{ type: 'text', text: JSON.stringify({ pendingId: id, status: 'waiting', summary: data.summary }) }] }
+  if (name === 'list_notebooks') return { content: [{ type: 'text', text: JSON.stringify(manifest(root).notebooks || []) }] }
+  if (name === 'list_notes') return { content: [{ type: 'text', text: JSON.stringify(listNotes(root, String(args.notebook || ''))) }] }
+  if (name === 'search_notes') {
+    const query = String(args.query || '').toLowerCase()
+    const notebooks = args.notebook ? [String(args.notebook)] : (manifest(root).notebooks || []).map((item) => item.name)
+    const hits = []
+    for (const notebook of notebooks) for (const note of listNotes(root, notebook)) {
+      const text = readNote(root, note.path).content
+      if (text.toLowerCase().includes(query)) hits.push({ ...note, excerpt: text.slice(0, 200) })
+    }
+    return { content: [{ type: 'text', text: JSON.stringify(hits) }] }
   }
-  if (name === 'pending_status') {
-    const { data } = proposal(root, String(args.pendingId || ''))
-    return { content: [{ type: 'text', text: JSON.stringify({ pendingId: data.id, status: data.status, summary: data.summary }) }] }
+  if (name === 'read_note') return { content: [{ type: 'text', text: readNote(root, String(args.path || '')).content }] }
+  if (name === 'read_todo') {
+    const primary = inside(root, path.join('便笺', 'todo.json'))
+    const fallback = inside(root, 'todo.json')
+    return { content: [{ type: 'text', text: fs.readFileSync(fs.existsSync(primary) ? primary : fallback, 'utf8') }] }
   }
-  if (name === 'cancel_pending') {
-    const { file, data } = proposal(root, String(args.pendingId || ''))
-    if (data.status !== 'waiting') throw new Error('提案已经处理')
-    data.status = 'cancelled'; data.cancelledAt = new Date().toISOString()
-    fs.writeFileSync(file, JSON.stringify(data, null, 2))
-    return { content: [{ type: 'text', text: JSON.stringify({ pendingId: data.id, status: 'cancelled' }) }] }
+  if (name === 'read_stickies') {
+    const stickies = (manifest(root).stickies || []).map((sticky) => {
+      let items = []
+      try { items = fs.readFileSync(inside(root, sticky.file), 'utf8').split('\n').map((line) => line.replace(/^[-*+]\s*/, '').trim()).filter(Boolean) } catch { /* ignore */ }
+      return { ...sticky, items }
+    })
+    return { content: [{ type: 'text', text: JSON.stringify(stickies) }] }
   }
   throw new Error(`未知工具：${name}`)
 }
