@@ -3853,128 +3853,107 @@ function dedupeOperations(operations) {
 function bodyLength(text) {
   return [...String(text || '')].length
 }
-function simulateImpact(root, operations) {
-  const state = new Map()
-  const get = (name) => {
+function simulateOperations(root, operations) {
+  const books = new Map()
+  const contents = new Map()
+  const getBook = (name) => {
     const key = safeName(name || '')
-    if (!state.has(key)) state.set(key, new Set(listNoteFiles(root, key).map((note) => note.path)))
-    return state.get(key)
+    if (!books.has(key)) books.set(key, new Set(listNoteFiles(root, key).map((note) => note.path)))
+    return books.get(key)
   }
-  const unique = (files, notebook, base) => {
+  const contentOf = (rel) => {
+    if (contents.has(rel)) return contents.get(rel)
+    try {
+      const body = readNote(root, rel).body
+      contents.set(rel, body)
+      return body
+    } catch { return '' }
+  }
+  const unique = (book, base) => {
     let name = base
     let suffix = 2
-    while (files.has(`${notebook}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
-    return `${notebook}/${name}`
+    while (getBook(book).has(`${book}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
+    return `${book}/${name}`
   }
-  let affected = 0
+  const remove = (rel) => {
+    const book = path.posix.dirname(rel)
+    return getBook(book).delete(rel)
+  }
+  let notes = 0
   let moves = 0
+  let long = false
   for (const op of operations || []) {
     const kind = String(op?.op || '')
     if (kind === 'renameNotebook') {
       const oldName = safeName(op.notebook || '')
       const newName = safeName(op.title || '')
-      const oldPaths = new Set([...get(oldName)].map((notePath) => `${newName}/${notePath.slice(oldName.length + 1)}`))
-      state.delete(oldName)
-      state.set(newName, oldPaths)
+      const oldPaths = [...getBook(oldName)]
+      const moved = new Set(oldPaths.map((rel) => `${newName}/${rel.slice(oldName.length + 1)}`))
+      books.delete(oldName)
+      books.set(newName, moved)
+      for (const oldRel of oldPaths) {
+        const newRel = `${newName}/${oldRel.slice(oldName.length + 1)}`
+        contents.set(newRel, contentOf(oldRel))
+      }
     } else if (kind === 'deleteNotebook') {
       const name = safeName(op.notebook || '')
-      affected += get(name).size
-      state.set(name, new Set())
+      notes += getBook(name).size
+      books.set(name, new Set())
     } else if (kind === 'delete') {
+      if (remove(normalizeAgentRel(op.path))) notes += 1
+    } else if (kind === 'create') {
+      const book = safeName(op.notebook || '')
+      const rel = unique(book, `${safeName(op.title || '新笔记')}.md`)
+      getBook(book).add(rel)
+      contents.set(rel, String(op.body || ''))
+      if (bodyLength(op.body || '') >= 500) long = true
+    } else if (kind === 'write') {
       const rel = normalizeAgentRel(op.path)
-      if (get(path.posix.dirname(rel)).delete(rel)) affected += 1
-    } else if (kind === 'fileMove') {
-      const from = normalizeAgentRel(op.from)
-      const to = normalizeAgentRel(op.to)
-      get(path.posix.dirname(from)).delete(from)
-      const targetBook = path.posix.dirname(to)
-      get(targetBook).add(unique(get(targetBook), targetBook, path.posix.basename(to)))
-      if (from.endsWith('.md')) moves += 1
-    } else if (kind === 'move') {
-      const rel = normalizeAgentRel(op.path)
-      get(path.posix.dirname(rel)).delete(rel)
-      const targetBook = safeName(op.notebook || '')
-      const base = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
-      get(targetBook).add(unique(get(targetBook), targetBook, base))
-      moves += 1
+      const before = contentOf(rel)
+      const next = splitFrontmatter(op.content || '').body
+      getBook(path.posix.dirname(rel)).add(rel)
+      contents.set(rel, next)
+      if (bodyLength(before) >= 500 || bodyLength(next) >= 500) long = true
     } else if (kind === 'rename') {
       const rel = normalizeAgentRel(op.path)
-      const notebook = path.posix.dirname(rel)
-      get(notebook).delete(rel)
-      get(notebook).add(unique(get(notebook), notebook, `${safeName(op.title || '新笔记')}.md`))
-    } else if (kind === 'create' || kind === 'write') {
-      const notebook = kind === 'create' ? safeName(op.notebook || '') : path.posix.dirname(normalizeAgentRel(op.path))
-      const base = kind === 'create' ? `${safeName(op.title || '新笔记')}.md` : path.posix.basename(normalizeAgentRel(op.path))
-      get(notebook).add(unique(get(notebook), notebook, base))
+      const body = contentOf(rel)
+      remove(rel)
+      const book = path.posix.dirname(rel)
+      const actual = unique(book, `${safeName(op.title || '新笔记')}.md`)
+      getBook(book).add(actual)
+      contents.set(actual, body)
+    } else if (kind === 'move') {
+      const rel = normalizeAgentRel(op.path)
+      const body = contentOf(rel)
+      remove(rel)
+      const book = safeName(op.notebook || '')
+      const base = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
+      const actual = unique(book, base)
+      getBook(book).add(actual)
+      contents.set(actual, body)
+      moves += 1
+    } else if (kind === 'fileMove' || kind === 'fileCopy') {
+      const from = normalizeAgentRel(op.from)
+      const to = normalizeAgentRel(op.to)
+      if (from.endsWith('.md')) {
+        const body = contentOf(from)
+        if (kind === 'fileMove') { remove(from); moves += 1 }
+        const book = path.posix.dirname(to)
+        const actual = unique(book, path.posix.basename(to))
+        getBook(book).add(actual)
+        contents.set(actual, body)
+      }
     }
   }
-  return { notes: affected, moves }
+  return { notes, moves, long }
 }
 function requiresConfirmation(root, operations, prior = {}) {
-  const list = Array.isArray(operations) ? operations : []
-  if (list.some((op) => ['settingsUpdate', 'setPrivacyMode', 'setNotebookPrivate'].includes(String(op?.op || '')))) return true
-  let long = false
-  const aliases = new Map()
-  const notebookAliases = new Map()
-  const claimed = new Set(listMarkdownFiles(root).map((value) => normalizeAgentRel(value)))
-  const uniquePath = (notebook, base) => {
-    let name = base
-    let suffix = 2
-    while (claimed.has(`${notebook}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
-    return `${notebook}/${name}`
-  }
-  const resolveAlias = (value) => {
-    let current = normalizeAgentRel(value)
-    for (let i = 0; i < 20; i += 1) {
-      const prefix = current.split('/')[0]
-      if (notebookAliases.has(prefix)) current = `${notebookAliases.get(prefix)}/${current.slice(prefix.length + 1)}`
-      else {
-        const inverse = [...notebookAliases.entries()].find(([, next]) => next === prefix)
-        if (inverse) current = `${inverse[0]}/${current.slice(prefix.length + 1)}`
-      }
-      if (!aliases.has(current)) break
-      current = aliases.get(current)
-    }
-    return current
-  }
-  for (const op of list) {
-    if (op.op === 'write') {
-      const targetPath = normalizeAgentRel(op.path)
-      const beforePath = resolveAlias(targetPath)
-      let before = ''
-      try { before = readNote(root, beforePath).body } catch { /* new target */ }
-      if (bodyLength(before) >= 500 || bodyLength(splitFrontmatter(op.content || '').body) >= 500) long = true
-    }
-    if (op.op === 'create' && bodyLength(op.body || '') >= 500) long = true
-    if (op.op === 'rename') {
-      const oldPath = normalizeAgentRel(op.path)
-      const notebook = path.posix.dirname(oldPath)
-      claimed.delete(oldPath)
-      const actual = uniquePath(notebook, `${safeName(op.title || '新笔记')}.md`)
-      claimed.add(actual)
-      if (actual !== oldPath) aliases.set(actual, resolveAlias(oldPath))
-    }
-    if (op.op === 'renameNotebook') {
-      const oldName = safeName(op.notebook || '')
-      const newName = safeName(op.title || '')
-      notebookAliases.set(oldName, newName)
-      for (const value of [...claimed]) if (value.startsWith(`${oldName}/`)) { claimed.delete(value); claimed.add(`${newName}/${value.slice(oldName.length + 1)}`) }
-    }
-    if (op.op === 'move') {
-      const oldPath = normalizeAgentRel(op.path)
-      claimed.delete(oldPath)
-      const targetBook = safeName(op.notebook || '')
-      const actual = uniquePath(targetBook, `${op.title ? `${safeName(op.title)}.md` : path.posix.basename(oldPath)}`)
-      claimed.add(actual)
-      if (actual !== oldPath) aliases.set(actual, resolveAlias(oldPath))
-    }
-  }
-  if (long) return true
-  const impact = simulateImpact(root, list)
-  return impact.notes + (Number(prior.notes) || 0) > 1 || impact.moves + (Number(prior.moves) || 0) > 1
+  const result = simulateOperations(root, operations)
+  return result.long || result.notes + (Number(prior.notes) || 0) > 1 || result.moves + (Number(prior.moves) || 0) > 1
 }
 function taskImpact(root, operations) {
-  return simulateImpact(root, operations)
+  const result = simulateOperations(root, operations)
+  return { notes: result.notes, moves: result.moves }
 }
 function addTaskImpact(job, stats) {
   job.taskStats = { notes: (job.taskStats?.notes || 0) + stats.notes, moves: (job.taskStats?.moves || 0) + stats.moves }
