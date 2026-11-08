@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "随记：日记、主题笔记本、快捷记录自动归档、便笺与待办。",
+  "description": "随记：DSH 本地笔记插件，随手记录、AI 归档、日记、待办、便笺与 MCP。",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
