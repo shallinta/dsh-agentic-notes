@@ -2484,13 +2484,6 @@ window.__ModuleLoader__.load({
               }),
               h('span', { style: { width: 34 } }, `${reminderSpeechVolume}%`)))),
 
-        h(SettingsSection, { title: '数据与隐私', desc: '删除的笔记和笔记本会先进废纸篓，超过保留天数才真正清理。' },
-          h(Field, { label: '废纸篓保留天数' }, h('input', {
-            type: 'number', min: 1, max: 365, value: trashDays,
-            onChange: (event) => { const next = Number(event.target.value); setTrashDays(next); patchSoon({ trashDays: next }) },
-          })),
-          h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。隐私模式只是隐藏笔记本，不加密文件。')),
-
         h(SettingsSection, { title: 'Agent 与模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
           h(Field, { label: 'Agent 引擎' }, h('select', { value: agentEngine, onChange: (event) => { const next = event.target.value === 'native' ? 'native' : 'json'; setAgentEngine(next); patchSoon({ agentEngine: next }) } },
             h('option', { value: 'native' }, '原生工具调用（默认，验证中）'),
@@ -2564,6 +2557,13 @@ window.__ModuleLoader__.load({
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
+        h(SettingsSection, { title: '数据与隐私', desc: '删除的笔记和笔记本会先进废纸篓，超过保留天数才真正清理。' },
+          h(Field, { label: '废纸篓保留天数' }, h('input', {
+            type: 'number', min: 1, max: 365, value: trashDays,
+            onChange: (event) => { const next = Number(event.target.value); setTrashDays(next); patchSoon({ trashDays: next }) },
+          })),
+          h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。隐私模式只是隐藏笔记本，不加密文件。')),
+
         h(SettingsSection, { title: '支持随记', desc: '如果对你有帮助，可以请我喝杯咖啡，感谢支持~' },
           h('div', { style: { display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start', paddingBottom: 10 } },
             h('div', { style: { textAlign: 'center' } },
