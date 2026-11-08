@@ -3666,8 +3666,9 @@ function pinnedGet(target, address, timeoutMs) {
   return new Promise((resolve, reject) => {
     const transport = target.protocol === 'https:' ? https : http
     const family = net.isIP(address) || 4
-    const hard = setTimeout(() => req.destroy(new Error('网页抓取超时')), Math.max(1000, Number(timeoutMs) || 60000))
-    const req = transport.request(target, {
+    let req
+    const hard = setTimeout(() => { try { req?.destroy(new Error('网页抓取超时')) } catch { /* ignore */ } }, Math.max(1000, Number(timeoutMs) || 60000))
+    try { req = transport.request(target, {
       method: 'GET',
       headers: { 'user-agent': 'Mozilla/5.0 dsh-agentic-notes', accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1' },
       ...(target.protocol === 'https:' ? { servername: target.hostname } : {}),
@@ -3685,19 +3686,31 @@ function pinnedGet(target, address, timeoutMs) {
       })
       res.on('end', () => { clearTimeout(hard); resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }) })
       res.on('error', (err) => { clearTimeout(hard); reject(err) })
-    })
+    }) } catch (err) { clearTimeout(hard); reject(err); return }
     req.setTimeout(Math.max(1000, Number(timeoutMs) || 60000), () => req.destroy(new Error('网页抓取超时')))
     req.on('error', (err) => { clearTimeout(hard); reject(err) })
     req.end()
   })
 }
 async function fetchWebText(url, maxChars = 16000, timeoutMs = 60000) {
-  let resolved = await resolvePublicTarget(url)
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || 60000))
+  const total = Math.max(1000, Number(timeoutMs) || 60000)
+  const deadline = Date.now() + total
+  const timer = setTimeout(() => controller.abort(), total)
+  const resolveInTime = async (value) => {
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) throw new Error('网页抓取超时')
+    let handle
+    try {
+      return await Promise.race([
+        resolvePublicTarget(value),
+        new Promise((_, reject) => { handle = setTimeout(() => reject(new Error('网页抓取超时')), remaining) }),
+      ])
+    } finally { clearTimeout(handle) }
+  }
   try {
+    let resolved = await resolveInTime(url)
     let res = null
-    const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || 60000)
     for (let hop = 0; hop < 6; hop += 1) {
       if (controller.signal.aborted) throw new Error('网页抓取超时')
       const remaining = deadline - Date.now()
@@ -3705,7 +3718,7 @@ async function fetchWebText(url, maxChars = 16000, timeoutMs = 60000) {
       res = await pinnedGet(resolved.target, resolved.addresses[0].address, remaining)
       if (![301, 302, 303, 307, 308].includes(res.status)) break
       if (!res.location) break
-      resolved = await resolvePublicTarget(new URL(res.location, resolved.target.href).href)
+      resolved = await resolveInTime(new URL(res.location, resolved.target.href).href)
     }
     if (!res || res.status < 200 || res.status >= 300) throw new Error(`网页返回 HTTP ${res?.status || 0}`)
     const text = res.body.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
@@ -3838,16 +3851,7 @@ function dedupeOperations(operations) {
   return out
 }
 function bodyLength(text) {
-  const raw = String(text || '')
-  let body = raw
-  if (/^---\s*\n/.test(raw)) {
-    const end = raw.indexOf('\n---', 4)
-    if (end > 0) {
-      const block = raw.slice(4, end)
-      if (/^[A-Za-z_][\w-]*\s*:/m.test(block)) body = raw.slice(end + 4).replace(/^\n+/, '')
-    }
-  }
-  return [...body].length
+  return [...String(text || '')].length
 }
 function simulateImpact(root, operations) {
   const state = new Map()
@@ -3878,19 +3882,17 @@ function simulateImpact(root, operations) {
       state.set(name, new Set())
     } else if (kind === 'delete') {
       const rel = normalizeAgentRel(op.path)
-      const notebook = path.posix.dirname(rel)
-      if (get(notebook).delete(rel)) affected += 1
+      if (get(path.posix.dirname(rel)).delete(rel)) affected += 1
     } else if (kind === 'fileMove') {
       const from = normalizeAgentRel(op.from)
       const to = normalizeAgentRel(op.to)
       get(path.posix.dirname(from)).delete(from)
       const targetBook = path.posix.dirname(to)
       get(targetBook).add(unique(get(targetBook), targetBook, path.posix.basename(to)))
-      moves += 1
+      if (from.endsWith('.md')) moves += 1
     } else if (kind === 'move') {
       const rel = normalizeAgentRel(op.path)
-      const source = path.posix.dirname(rel)
-      get(source).delete(rel)
+      get(path.posix.dirname(rel)).delete(rel)
       const targetBook = safeName(op.notebook || '')
       const base = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
       get(targetBook).add(unique(get(targetBook), targetBook, base))
@@ -3900,9 +3902,10 @@ function simulateImpact(root, operations) {
       const notebook = path.posix.dirname(rel)
       get(notebook).delete(rel)
       get(notebook).add(unique(get(notebook), notebook, `${safeName(op.title || '新笔记')}.md`))
-    } else if (kind === 'create') {
-      const notebook = safeName(op.notebook || '')
-      get(notebook).add(unique(get(notebook), notebook, `${safeName(op.title || '新笔记')}.md`))
+    } else if (kind === 'create' || kind === 'write') {
+      const notebook = kind === 'create' ? safeName(op.notebook || '') : path.posix.dirname(normalizeAgentRel(op.path))
+      const base = kind === 'create' ? `${safeName(op.title || '新笔记')}.md` : path.posix.basename(normalizeAgentRel(op.path))
+      get(notebook).add(unique(get(notebook), notebook, base))
     }
   }
   return { notes: affected, moves }
@@ -3912,17 +3915,59 @@ function requiresConfirmation(root, operations, prior = {}) {
   if (list.some((op) => ['settingsUpdate', 'setPrivacyMode', 'setNotebookPrivate'].includes(String(op?.op || '')))) return true
   let long = false
   const aliases = new Map()
+  const notebookAliases = new Map()
+  const claimed = new Set(listMarkdownFiles(root).map((value) => normalizeAgentRel(value)))
+  const uniquePath = (notebook, base) => {
+    let name = base
+    let suffix = 2
+    while (claimed.has(`${notebook}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
+    return `${notebook}/${name}`
+  }
+  const resolveAlias = (value) => {
+    let current = normalizeAgentRel(value)
+    for (let i = 0; i < 20; i += 1) {
+      const prefix = current.split('/')[0]
+      if (notebookAliases.has(prefix)) current = `${notebookAliases.get(prefix)}/${current.slice(prefix.length + 1)}`
+      else {
+        const inverse = [...notebookAliases.entries()].find(([, next]) => next === prefix)
+        if (inverse) current = `${inverse[0]}/${current.slice(prefix.length + 1)}`
+      }
+      if (!aliases.has(current)) break
+      current = aliases.get(current)
+    }
+    return current
+  }
   for (const op of list) {
     if (op.op === 'write') {
       const targetPath = normalizeAgentRel(op.path)
-      const beforePath = aliases.get(targetPath) || targetPath
+      const beforePath = resolveAlias(targetPath)
       let before = ''
       try { before = readNote(root, beforePath).body } catch { /* new target */ }
-      if (bodyLength(before) >= 500 || bodyLength(op.content || '') >= 500) long = true
+      if (bodyLength(before) >= 500 || bodyLength(splitFrontmatter(op.content || '').body) >= 500) long = true
     }
     if (op.op === 'create' && bodyLength(op.body || '') >= 500) long = true
-    if (op.op === 'rename') aliases.set(normalizeAgentRel(`${path.posix.dirname(normalizeAgentRel(op.path))}/${safeName(op.title || '新笔记')}.md`), normalizeAgentRel(op.path))
-    if (op.op === 'move') aliases.set(normalizeAgentRel(`${safeName(op.notebook || '')}/${op.title ? `${safeName(op.title)}.md` : path.posix.basename(normalizeAgentRel(op.path))}`), normalizeAgentRel(op.path))
+    if (op.op === 'rename') {
+      const oldPath = normalizeAgentRel(op.path)
+      const notebook = path.posix.dirname(oldPath)
+      claimed.delete(oldPath)
+      const actual = uniquePath(notebook, `${safeName(op.title || '新笔记')}.md`)
+      claimed.add(actual)
+      if (actual !== oldPath) aliases.set(actual, resolveAlias(oldPath))
+    }
+    if (op.op === 'renameNotebook') {
+      const oldName = safeName(op.notebook || '')
+      const newName = safeName(op.title || '')
+      notebookAliases.set(oldName, newName)
+      for (const value of [...claimed]) if (value.startsWith(`${oldName}/`)) { claimed.delete(value); claimed.add(`${newName}/${value.slice(oldName.length + 1)}`) }
+    }
+    if (op.op === 'move') {
+      const oldPath = normalizeAgentRel(op.path)
+      claimed.delete(oldPath)
+      const targetBook = safeName(op.notebook || '')
+      const actual = uniquePath(targetBook, `${op.title ? `${safeName(op.title)}.md` : path.posix.basename(oldPath)}`)
+      claimed.add(actual)
+      if (actual !== oldPath) aliases.set(actual, resolveAlias(oldPath))
+    }
   }
   if (long) return true
   const impact = simulateImpact(root, list)

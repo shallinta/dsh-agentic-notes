@@ -245,3 +245,62 @@ test('collision on move then delete notebook requires confirmation', async () =>
   ], 'test'), /需要用户确认/)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('consecutive renames cannot hide a long note', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'long.md'), `# long\n\n${'长'.repeat(600)}\n`)
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'rename', path: 'Test/long.md', title: 'one' },
+    { op: 'rename', path: 'Test/one.md', title: 'two' },
+    { op: 'write', path: 'Test/two.md', content: '# short\n' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('collision rename cannot hide a long note', async () => {
+  const root = tempRoot()
+  fs.mkdirSync(path.join(root, 'Target'))
+  fs.writeFileSync(path.join(root, 'Target', 'a.md'), '# target\n')
+  fs.writeFileSync(path.join(root, 'Test', 'a.md'), `# long\n\n${'长'.repeat(600)}\n`)
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.notebooks.push({ name: 'Target' })
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'move', path: 'Test/a.md', notebook: 'Target' },
+    { op: 'write', path: 'Target/a-2.md', content: '# short\n' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('notebook rename cannot hide a long note', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'long.md'), `# long\n\n${'长'.repeat(600)}\n`)
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'renameNotebook', notebook: 'Test', title: 'Renamed' },
+    { op: 'write', path: 'Renamed/long.md', content: '# short\n' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('write a new note then delete the notebook requires confirmation', async () => {
+  const root = tempRoot()
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'write', path: 'Test/new.md', content: '# new\n' },
+    { op: 'deleteNotebook', notebook: 'Test' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('moving two attachments does not require note confirmation', async () => {
+  const root = tempRoot()
+  fs.mkdirSync(path.join(root, 'Other'))
+  fs.writeFileSync(path.join(root, 'Test', 'a.png'), 'a')
+  fs.writeFileSync(path.join(root, 'Test', 'b.png'), 'b')
+  const out = await applyAgentOperations(root, [
+    { op: 'fileMove', from: 'Test/a.png', to: 'Other/a.png' },
+    { op: 'fileMove', from: 'Test/b.png', to: 'Other/b.png' },
+  ], 'test', null, false)
+  assert.equal(out.errors.length, 0)
+  assert.equal(fs.existsSync(path.join(root, 'Other', 'a.png')), true)
+  fs.rmSync(root, { recursive: true, force: true })
+})
