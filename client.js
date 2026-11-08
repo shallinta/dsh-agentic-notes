@@ -4050,7 +4050,7 @@ window.__ModuleLoader__.load({
                 }
               },
             }),
-            h('button', { className: 'dsan-btn primary', onClick: submitCapture }, '记上')),
+            h('button', { className: 'dsan-btn primary', onClick: submitCapture }, '随记')),
           captureImages.length ? h('div', { className: 'dsan-attachments' },
             captureImages.map((image, index) => h('div', {
               key: image.id, className: 'dsan-attachment', title: image.name,
