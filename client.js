@@ -303,7 +303,7 @@ window.__ModuleLoader__.load({
 .dsan-toast-foot .sp{flex:1}
 .dsan-toast .x{position:static;flex:none;margin-left:auto;align-self:flex-end;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
 .dsan-toast .x:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
-.dsan-overlay{position:fixed;inset:0;background:rgba(0,0,0,.34);display:flex;align-items:center;justify-content:center;z-index:90;padding:24px}
+.dsan-overlay{position:absolute;inset:0;background:rgba(0,0,0,.34);display:flex;align-items:center;justify-content:center;z-index:90;padding:24px}
 .dsan-modal{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.28);width:min(560px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
 .dsan-modal.wide{width:min(920px,100%)}
 .dsan-modal-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--dsw-alias-border-l1);font-weight:600}
