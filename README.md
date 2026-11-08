@@ -59,9 +59,7 @@ MCP 让 DSH 或其他 AI 会话直接读写随记。查资料、问概念、做�
 
 ## 演示视频
 
-<video src="./assets/suiji-demo.mp4" controls muted playsinline width="100%"></video>
-
-[如果视频无法播放，点此下载](./assets/suiji-demo.mp4)
+https://github.com/user-attachments/assets/88210769-6088-4a0b-a025-c8265382889f
 
 视频展示随记的快捷记录、日记归档、笔记管理和 Agent 协作流程。
 
