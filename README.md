@@ -385,13 +385,39 @@ Token 等同于随记写入权限：
 
 > 当前为不稳定版本，正在进行逻辑重构，请定期备份笔记。
 
-直接把仓库地址发给 DSH 会话里的模型，让它安装：
+### 从 npm 安装
+
+随记已经发布到 npm：
+
+```text
+@suiji-ai/dsh-agentic-notes
+```
+
+在 DSH 会话里说：
+
+```text
+请安装这个随记插件：@suiji-ai/dsh-agentic-notes
+```
+
+模型会按当前 DSH 配置安装插件，把它加入 bundle 并启用。
+
+也可以先查看包信息：
+
+```bash
+npm view @suiji-ai/dsh-agentic-notes
+```
+
+不要只在普通 Node 项目里执行 `npm install`。这是 DSH 插件包，需要让 DSH 的插件安装流程接管，才会注册到当前 profile。
+
+### 从 GitHub 安装
+
+直接使用仓库最新代码：
 
 ```text
 请帮我安装这个随记插件：https://github.com/shallinta/dsh-agentic-notes
 ```
 
-模型会按当前 DSH 配置安装插件，把它加入 bundle 并启用。装好后左侧栏会出现「随记」入口；如果没有出现，重启 DSH，或者让模型检查插件状态。
+装好后左侧栏会出现「随记」入口；如果没有出现，重启 DSH，或者让模型检查插件状态。
 
 ## 第一次使用
 
