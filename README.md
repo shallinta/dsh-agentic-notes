@@ -224,7 +224,7 @@ Authorization: Bearer <Token>
 
 MCP 支持读取、搜索、创建、写入、改名、移动、删除笔记，以及待办、便笺和全局通知。设置读写只在插件内部，不通过 MCP 暴露。
 
-安装时附带 `skills/suiji-mcp/SKILL.md`，可以给支持 skill 的 AI 使用。
+安装时附带 `skills/suiji-note/SKILL.md`，可以给支持 skill 的 AI 使用。
 
 ## 安装
 

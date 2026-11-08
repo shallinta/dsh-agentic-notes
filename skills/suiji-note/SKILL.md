@@ -1,5 +1,5 @@
 ---
-name: suiji-mcp
+name: suiji-note
 description: 连接随记的 HTTP MCP 服务，读取、搜索并写入本地笔记；写入前必须让用户审查具体改动并明确确认。用户提到随记、MCP 笔记、读取/整理本地笔记时使用。
 ---
 
