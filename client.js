@@ -4148,7 +4148,7 @@ window.__ModuleLoader__.load({
         modal?.kind === 'editNotebook' ? h(NotebookModal, {
           initial: modal.notebook,
           onClose: () => setModal(null),
-          onSaved: (notebook) => { setModal(null); if (notebook?.name) setView({ kind: 'notebook', name: notebook.name }); refresh() },
+          onSaved: (notebook) => { if (notebook?.name) setView({ kind: 'notebook', name: notebook.name }); refresh() },
           onDeleted: () => { setModal(null); setView({ kind: 'home' }); refresh() },
           pushToast,
         }) : null,
