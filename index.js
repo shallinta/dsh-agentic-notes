@@ -5428,7 +5428,7 @@ async function dispatchUnlocked(ctx, op, args) {
       const pending = readJson(path.join(pendingDir(root), `${pendingId}.json`), null)
       if (!pending) throw new Error('找不到待确认的改动')
       const surface = {
-        id: crypto.randomUUID(), jobId: '', kind: 'confirm', type: 'modal',
+        id: crypto.randomUUID(), jobId: '', root: rootOf(), kind: 'confirm', type: 'modal',
         title: pending.kind === 'capture' ? '确认归档这条记录' : '确认这次改动',
         body: pending.brief && !String(pending.brief).includes('[object Object]')
           ? pending.brief

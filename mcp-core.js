@@ -48,7 +48,7 @@ function trySymlinkLock(lock) {
 function removeIfPID(lock, pid) {
   try {
     if (pid > 0 && lockPid(lock) === pid) fs.unlinkSync(lock)
-    else if (!pid) {
+    else if (!pid && lockPid(lock) === 0) {
       const stat = fs.statSync(lock)
       if (Date.now() - stat.mtimeMs > 1000) fs.unlinkSync(lock)
     }

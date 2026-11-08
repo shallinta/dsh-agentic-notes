@@ -2893,7 +2893,7 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (!state?.root) return
         liveRoot = state.root
-        setSurfaces((prev) => prev.filter((item) => !item.root || item.root === liveRoot))
+        setSurfaces((prev) => prev.filter((item) => item.root ? item.root === liveRoot : !(item.pendingId || item.kind === 'confirm')))
         setToasts((prev) => prev.filter((item) => !item.notificationId))
       }, [state?.root])
       useEffect(() => {
@@ -4112,7 +4112,7 @@ window.__ModuleLoader__.load({
           })) : null,
         h('div', { className: 'dsan-surface-stack dsan-unified-stack' }, ...[
           ...toasts.map((toast) => ({ at: toast.at || 0, node: h(ToastCard, { key: toast.id, toast, dismiss }) })),
-          ...surfaces.filter((surface) => surface.type === 'toast').map((surface) => ({ at: Date.parse(surface.createdAt) || 0, node: renderSurface(surface) })),
+          ...surfaces.filter((surface) => surface.type === 'toast').map((surface) => ({ at: Number.isFinite(Date.parse(surface.createdAt)) ? Date.parse(surface.createdAt) : Date.now(), node: renderSurface(surface) })),
         ].sort((a, b) => a.at - b.at).slice(-3).map((item) => item.node)),
         dueReminders.length ? h('div', { className: 'dsan-reminder-stack' },
           dueReminders.map((reminder) => h(ReminderCard, {
