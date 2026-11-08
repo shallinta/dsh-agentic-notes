@@ -461,6 +461,7 @@ function splitFrontmatter(text) {
     }
     data[key] = value
   }
+  if (!Object.keys(data).length) return { data: {}, body: raw, has: false }
   return { data, body, has: true }
 }
 
@@ -3665,6 +3666,7 @@ function pinnedGet(target, address, timeoutMs) {
   return new Promise((resolve, reject) => {
     const transport = target.protocol === 'https:' ? https : http
     const family = net.isIP(address) || 4
+    const hard = setTimeout(() => req.destroy(new Error('网页抓取超时')), Math.max(1000, Number(timeoutMs) || 60000))
     const req = transport.request(target, {
       method: 'GET',
       headers: { 'user-agent': 'Mozilla/5.0 dsh-agentic-notes', accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1' },
@@ -3681,11 +3683,11 @@ function pinnedGet(target, address, timeoutMs) {
         if (size > 5 * 1024 * 1024) { req.destroy(new Error('网页内容超过 5MB')); return }
         chunks.push(chunk)
       })
-      res.on('end', () => resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }))
-      res.on('error', reject)
+      res.on('end', () => { clearTimeout(hard); resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }) })
+      res.on('error', (err) => { clearTimeout(hard); reject(err) })
     })
     req.setTimeout(Math.max(1000, Number(timeoutMs) || 60000), () => req.destroy(new Error('网页抓取超时')))
-    req.on('error', reject)
+    req.on('error', (err) => { clearTimeout(hard); reject(err) })
     req.end()
   })
 }
@@ -3695,9 +3697,12 @@ async function fetchWebText(url, maxChars = 16000, timeoutMs = 60000) {
   const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || 60000))
   try {
     let res = null
+    const deadline = Date.now() + Math.max(1000, Number(timeoutMs) || 60000)
     for (let hop = 0; hop < 6; hop += 1) {
       if (controller.signal.aborted) throw new Error('网页抓取超时')
-      res = await pinnedGet(resolved.target, resolved.addresses[0].address, timeoutMs)
+      const remaining = deadline - Date.now()
+      if (remaining <= 0) throw new Error('网页抓取超时')
+      res = await pinnedGet(resolved.target, resolved.addresses[0].address, remaining)
       if (![301, 302, 303, 307, 308].includes(res.status)) break
       if (!res.location) break
       resolved = await resolvePublicTarget(new URL(res.location, resolved.target.href).href)
@@ -3822,6 +3827,7 @@ function canonicalValue(value) {
   return value
 }
 function operationKey(op) { return JSON.stringify(canonicalValue(op)) }
+function isDedupable(op) { return ['todoAdd', 'memoCreate'].includes(op?.op) }
 function dedupeOperations(operations) {
   const out = []
   const safe = new Set(['todoAdd', 'memoCreate'])
@@ -3850,6 +3856,12 @@ function simulateImpact(root, operations) {
     if (!state.has(key)) state.set(key, new Set(listNoteFiles(root, key).map((note) => note.path)))
     return state.get(key)
   }
+  const unique = (files, notebook, base) => {
+    let name = base
+    let suffix = 2
+    while (files.has(`${notebook}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
+    return `${notebook}/${name}`
+  }
   let affected = 0
   let moves = 0
   for (const op of operations || []) {
@@ -3864,27 +3876,33 @@ function simulateImpact(root, operations) {
       const name = safeName(op.notebook || '')
       affected += get(name).size
       state.set(name, new Set())
-    } else if (kind === 'delete' || kind === 'fileDelete') {
+    } else if (kind === 'delete') {
       const rel = normalizeAgentRel(op.path)
       const notebook = path.posix.dirname(rel)
-      const files = get(notebook)
-      if (files.delete(rel)) affected += 1
-    } else if (kind === 'move' || kind === 'fileMove') {
+      if (get(notebook).delete(rel)) affected += 1
+    } else if (kind === 'fileMove') {
+      const from = normalizeAgentRel(op.from)
+      const to = normalizeAgentRel(op.to)
+      get(path.posix.dirname(from)).delete(from)
+      const targetBook = path.posix.dirname(to)
+      get(targetBook).add(unique(get(targetBook), targetBook, path.posix.basename(to)))
+      moves += 1
+    } else if (kind === 'move') {
       const rel = normalizeAgentRel(op.path)
       const source = path.posix.dirname(rel)
       get(source).delete(rel)
-      const target = safeName(op.notebook || '')
-      const name = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
-      get(target).add(`${target}/${name}`)
+      const targetBook = safeName(op.notebook || '')
+      const base = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
+      get(targetBook).add(unique(get(targetBook), targetBook, base))
       moves += 1
     } else if (kind === 'rename') {
       const rel = normalizeAgentRel(op.path)
       const notebook = path.posix.dirname(rel)
       get(notebook).delete(rel)
-      get(notebook).add(`${notebook}/${safeName(op.title || '新笔记')}.md`)
+      get(notebook).add(unique(get(notebook), notebook, `${safeName(op.title || '新笔记')}.md`))
     } else if (kind === 'create') {
       const notebook = safeName(op.notebook || '')
-      get(notebook).add(`${notebook}/${safeName(op.title || '新笔记')}.md`)
+      get(notebook).add(unique(get(notebook), notebook, `${safeName(op.title || '新笔记')}.md`))
     }
   }
   return { notes: affected, moves }
@@ -3893,13 +3911,18 @@ function requiresConfirmation(root, operations, prior = {}) {
   const list = Array.isArray(operations) ? operations : []
   if (list.some((op) => ['settingsUpdate', 'setPrivacyMode', 'setNotebookPrivate'].includes(String(op?.op || '')))) return true
   let long = false
+  const aliases = new Map()
   for (const op of list) {
     if (op.op === 'write') {
+      const targetPath = normalizeAgentRel(op.path)
+      const beforePath = aliases.get(targetPath) || targetPath
       let before = ''
-      try { before = readNote(root, normalizeAgentRel(op.path)).body } catch { /* new target */ }
+      try { before = readNote(root, beforePath).body } catch { /* new target */ }
       if (bodyLength(before) >= 500 || bodyLength(op.content || '') >= 500) long = true
     }
     if (op.op === 'create' && bodyLength(op.body || '') >= 500) long = true
+    if (op.op === 'rename') aliases.set(normalizeAgentRel(`${path.posix.dirname(normalizeAgentRel(op.path))}/${safeName(op.title || '新笔记')}.md`), normalizeAgentRel(op.path))
+    if (op.op === 'move') aliases.set(normalizeAgentRel(`${safeName(op.notebook || '')}/${op.title ? `${safeName(op.title)}.md` : path.posix.basename(normalizeAgentRel(op.path))}`), normalizeAgentRel(op.path))
   }
   if (long) return true
   const impact = simulateImpact(root, list)

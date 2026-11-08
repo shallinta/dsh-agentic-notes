@@ -214,3 +214,34 @@ test('separator-wrapped long body still requires confirmation', async () => {
   await assert.rejects(() => applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'long', body }], 'test'), /需要用户确认/)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('existing long body wrapped in separators still requires confirmation', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'long.md'), `---\n${'长'.repeat(600)}\n---\n`)
+  await assert.rejects(() => applyAgentOperations(root, [{ op: 'write', path: 'Test/long.md', content: '# short\n' }], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('rename then overwrite long note requires confirmation', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'long.md'), `# long\n\n${'长'.repeat(600)}\n`)
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'rename', path: 'Test/long.md', title: 'renamed' },
+    { op: 'write', path: 'Test/renamed.md', content: '# short\n' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('collision on move then delete notebook requires confirmation', async () => {
+  const root = tempRoot()
+  fs.mkdirSync(path.join(root, 'Target'))
+  fs.writeFileSync(path.join(root, 'Target', 'a.md'), '# t\n')
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.notebooks.push({ name: 'Target' })
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'move', path: 'Test/a.md', notebook: 'Target' },
+    { op: 'deleteNotebook', notebook: 'Target' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
