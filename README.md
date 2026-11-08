@@ -53,9 +53,13 @@
 
 灵感、资料、临时便笺、待办提醒在同一个空间里。需要写东西时，素材就在旁边。
 
-## 截图示例
+## 演示视频
 
-<!-- 截图示例占位：截图随后补充 -->
+<video src="./assets/suiji-demo.mp4" controls muted playsinline width="100%"></video>
+
+[如果视频无法播放，点此下载](./assets/suiji-demo.mp4)
+
+视频展示随记的快捷记录、日记归档、笔记管理和 Agent 协作流程。
 
 ## 功能
 
