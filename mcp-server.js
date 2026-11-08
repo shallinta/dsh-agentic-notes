@@ -16,7 +16,7 @@ rl.on('line', (line) => {
   const fail = (message) => process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', id: request.id, error: { code: -32603, message } })}\n`)
   try {
     if (!ROOT) throw new Error('DSAN_ROOT 未设置')
-    if (request.method === 'initialize') return reply({ protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.1', commit: pluginCommit() } })
+    if (request.method === 'initialize') return reply({ protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.2', commit: pluginCommit() } })
     if (request.method === 'tools/list') return reply({ tools: mcpTools })
     if (request.method === 'tools/call') return reply(callMcpTool(ROOT, request.params?.name, request.params?.arguments || {}))
     return fail(`未知方法：${request.method}`)
