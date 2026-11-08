@@ -2495,6 +2495,7 @@ window.__ModuleLoader__.load({
             h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => pushToast({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => pushToast({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
         h(SettingsSection, { title: '模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
           h(Field, { label: 'Agent 引擎' }, h('select', { value: agentEngine, onChange: (event) => { const next = event.target.value === 'native' ? 'native' : 'json'; setAgentEngine(next); patchSoon({ agentEngine: next }) } },

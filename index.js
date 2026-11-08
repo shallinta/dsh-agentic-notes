@@ -5418,6 +5418,14 @@ async function dispatchUnlocked(ctx, op, args) {
       }
       return { ok: true, closed: surface.id }
     }
+    case 'mcp.skill.install': {
+      const source = path.join(path.dirname(fileURLToPath(import.meta.url)), 'skills', 'suiji-mcp', 'SKILL.md')
+      if (!fs.existsSync(source)) throw new Error('插件里没有找到 SKILL.md')
+      const target = path.join(os.homedir(), '.agents', 'skills', 'suiji-mcp', 'SKILL.md')
+      fs.mkdirSync(path.dirname(target), { recursive: true })
+      fs.copyFileSync(source, target)
+      return { path: target }
+    }
     case 'mcp.token.regenerate': {
       const token = crypto.randomBytes(24).toString('hex')
       saveConfig({ mcpToken: token })
