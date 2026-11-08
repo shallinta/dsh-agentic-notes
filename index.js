@@ -84,7 +84,7 @@ function loadAgentSessionByJob(root, jobId) {
         id: data.jobId, sessionId: data.id, status: data.status || 'waiting',
         phase: data.phase || 'surface', message: data.message || '等待用户回答', round: data.round || 0,
         total: 0, error: data.error || '', result: data.result || null, cancelled: false, args: data.args || {},
-        history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], staged: data.staged || [], messages: data.messages || [], baselineSignature: data.baselineSignature || '', logPath: data.logPath || '',
+        history: data.history || [], surfaces: data.surfaces || [], turns: data.turns || [], staged: data.staged || [], messages: data.messages || [], baselineSignature: data.baselineSignature || '', taskStats: data.taskStats || { notes: 0, moves: 0 }, logPath: data.logPath || '',
         createdAt: data.updatedAt, updatedAt: nowIso(),
       }
       for (const surface of job.surfaces) agentSurfaces.set(surface.id, surface)
@@ -106,7 +106,7 @@ function saveAgentSession(root, job) {
     fs.mkdirSync(dir, { recursive: true })
     writeJson(path.join(dir, `${job.sessionId}.json`), {
       id: job.sessionId, jobId: job.id, status: job.status, phase: job.phase, message: job.message || '', error: job.error || '', result: job.result || null,
-      args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], staged: job.staged || [], messages: job.messages || [], baselineSignature: job.baselineSignature || '', logPath: job.logPath || '',
+      args: job.args || {}, history: job.history || [], surfaces: job.surfaces || [], turns: job.turns || [], staged: job.staged || [], messages: job.messages || [], baselineSignature: job.baselineSignature || '', taskStats: job.taskStats || { notes: 0, moves: 0 }, logPath: job.logPath || '',
       round: job.round || 0, updatedAt: nowIso(),
     })
   } catch { /* best effort */ }
@@ -3640,7 +3640,8 @@ function isPrivateIp(address) {
   const ip = String(address || '').replace(/^\[|\]$/g, '').toLowerCase()
   if (net.isIPv4(ip)) return /^(127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)
   if (net.isIPv6(ip)) {
-    if (ip === '::1' || ip === '::' || ip.startsWith('::ffff:') || ip.startsWith('fe80:') || ip.startsWith('fc') || ip.startsWith('fd')) return true
+    const first = parseInt(ip.split(':')[0], 16)
+    if (ip === '::1' || ip === '::' || ip.startsWith('::ffff:') || (first & 0xffc0) === 0xfe80 || (first & 0xffc0) === 0xfec0 || ip.startsWith('fc') || ip.startsWith('fd')) return true
     const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
     if (mapped) return isPrivateIp(mapped[1])
   }
@@ -3791,17 +3792,21 @@ function canonicalValue(value) {
 function operationKey(op) { return JSON.stringify(canonicalValue(op)) }
 function dedupeOperations(operations) {
   const out = []
-  for (const op of operations || []) if (!out.some((item) => operationKey(item) === operationKey(op))) out.push(op)
+  const safe = new Set(['todoAdd', 'memoCreate'])
+  for (const op of operations || []) {
+    if (safe.has(op?.op) && out.some((item) => operationKey(item) === operationKey(op))) continue
+    out.push(op)
+  }
   return out
 }
 function bodyLength(text) {
   return [...String(splitFrontmatter(text).body || '')].length
 }
-function requiresConfirmation(root, operations) {
+function requiresConfirmation(root, operations, prior = {}) {
   const list = Array.isArray(operations) ? operations : []
   let deletes = 0
-  let moves = 0
-  let affectedNotes = 0
+  let moves = Number(prior.moves) || 0
+  let affectedNotes = Number(prior.notes) || 0
   for (const op of list) {
     const kind = String(op?.op || '')
     if (kind === 'settingsUpdate' || kind === 'setPrivacyMode' || kind === 'setNotebookPrivate') return true
@@ -3816,6 +3821,20 @@ function requiresConfirmation(root, operations) {
     if (kind === 'create' && bodyLength(op.body || '') >= 500) return true
   }
   return affectedNotes > 1 || deletes > 1 || moves > 1
+}
+
+function taskImpact(root, operations) {
+  const stats = { notes: 0, moves: 0 }
+  for (const op of operations || []) {
+    if (op.op === 'delete') stats.notes += 1
+    if (op.op === 'deleteNotebook') stats.notes += listNoteFiles(root, safeName(op.notebook || '')).length
+    if (op.op === 'move' || op.op === 'fileMove') stats.moves += 1
+  }
+  return stats
+}
+function addTaskImpact(job, operations) {
+  const stats = taskImpact(job.root || rootOf(), operations)
+  job.taskStats = { notes: (job.taskStats?.notes || 0) + stats.notes, moves: (job.taskStats?.moves || 0) + stats.moves }
 }
 
 async function runNativeAgent(ctx, root, manifest, args, job) {
@@ -3961,12 +3980,13 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       return
     }
     job.surfaces = (job.surfaces || []).map((surface) => surface.kind === 'progress' ? { ...surface, status: 'closed' } : surface)
-    if (staged.length && !requiresConfirmation(root, staged)) {
+    if (staged.length && !requiresConfirmation(root, staged, job.taskStats)) {
       try {
         const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
         if (!out.errors?.length) job.baselineSignature = stateSignature(root, readManifest(root))
         if (!out.errors?.length) {
           const cleanReply = String(result.text || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim()
+          addTaskImpact(job, staged)
           job.staged = []
           job.status = 'done'
           job.phase = 'done'
@@ -3975,8 +3995,9 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
           saveAgentSession(root, job)
           return
         }
-      } catch { /* fall through to review */ }
+      } catch (err) { if (job.cancelled || err?.cancelled) throw err }
     }
+    if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true })
     job.message = '处理完成'
     if (staged.length) {
       const latest = readManifest(root)
@@ -4346,13 +4367,13 @@ async function runReactAgent(ctx, root, manifest, args, job) {
           if (fs.existsSync(absPath(root, desired))) throw new Error(`同名笔记已存在：${desired}`)
         }
         assertAgentScope(context, operations, createdPaths)
-        const needsConfirm = requiresConfirmation(root, operations)
+        const needsConfirm = requiresConfirmation(root, operations, job.taskStats)
         if (tool === 'stage_operations' || transaction || needsConfirm) {
           for (const op of dedupeOperations(operations)) if (!staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
           observation = `已暂存 ${operations.length} 个操作${needsConfirm ? '（需要确认）' : ''}`
         } else {
           const out = await applyAgentOperations(root, operations, instruction, job.baselineSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
-          if (!out.errors?.length) job.baselineSignature = stateSignature(root, readManifest(root))
+          if (!out.errors?.length) { job.baselineSignature = stateSignature(root, readManifest(root)); addTaskImpact(job, operations) }
           applied.push(...(out.applied || []))
           if (out.errors?.length) throw new Error(`部分操作失败：${out.errors.join('；')}`)
           for (const item of out.applied || []) if (item.op === 'create' && item.path) createdPaths.add(item.path)
@@ -4416,27 +4437,29 @@ async function runReactAgent(ctx, root, manifest, args, job) {
   turn.endedAt = nowIso()
   if (transaction && staged.length && !commitReady) throw new Error('事务还未提交，不能结束任务')
   job.surfaces = (job.surfaces || []).map((surface) => surface.kind === 'progress' ? { ...surface, status: 'closed' } : surface)
-  if (staged.length && !requiresConfirmation(root, staged)) {
+  if (staged.length && !requiresConfirmation(root, staged, job.taskStats)) {
     try {
       const out = await applyAgentOperations(root, staged, instruction, baseSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
       if (!out.errors?.length) {
         job.baselineSignature = stateSignature(root, readManifest(root))
+        addTaskImpact(job, staged)
         applied.push(...(out.applied || []))
         staged.length = 0
         job.staged = []
         reply = String(reply || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim() + '\n\n已直接写入，无需确认。'
       }
-    } catch { /* fall through to review */ }
+    } catch (err) { if (job.cancelled || err?.cancelled) throw err }
   }
+  if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true })
   if (staged.length) {
-    if (stateSignature(root, readManifest(root)) !== baseSignature) throw new Error('ReAct 期间笔记或待办已有新的改动，请重试')
+    if (stateSignature(root, readManifest(root)) !== job.baselineSignature) throw new Error('ReAct 期间笔记或待办已有新的改动，请重试')
     const id = crypto.randomUUID()
     const summary = summarizeOperations(staged)
     const pending = {
       id, at: nowIso(), instruction, reply,
       brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}`,
       scale: 'large', summary,
-      signature: baseSignature, operations: staged,
+      signature: job.baselineSignature, operations: staged,
     }
     writeJson(path.join(pendingDir(root), `${id}.json`), pending)
     job.staged = []

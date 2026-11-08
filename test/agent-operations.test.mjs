@@ -171,3 +171,15 @@ test('duplicate operations are deduped regardless of key order', async () => {
   assert.equal(todo.items.filter((item) => item.text === 'same').length, 1)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('repeated writes to the same path preserve order', async () => {
+  const root = tempRoot()
+  const out = await applyAgentOperations(root, [
+    { op: 'write', path: 'Test/a.md', content: '# A\n' },
+    { op: 'write', path: 'Test/a.md', content: '# B\n' },
+    { op: 'write', path: 'Test/a.md', content: '# A\n' },
+  ], 'test', null, true)
+  assert.equal(out.errors.length, 0)
+  assert.equal(fs.readFileSync(path.join(root, 'Test/a.md'), 'utf8'), '# A\n')
+  fs.rmSync(root, { recursive: true, force: true })
+})
