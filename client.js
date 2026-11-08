@@ -2340,7 +2340,7 @@ window.__ModuleLoader__.load({
             h('button', { className: 'dsan-btn small', onClick: pick }, '换一个目录')),
           h('div', { className: 'dsan-set-hint' }, '换目录不会自动搬文件。要保留内容，先把旧目录里的笔记和 .dsh-notebooks 复制到新目录，再切换。')),
 
-        h(SettingsSection, { title: '外观', desc: '首页和提醒卡片共用这张背景图；便笺和待办的透明程度也在这里调。' },
+        h(SettingsSection, { title: '外观与界面', desc: '首页和提醒卡片共用这张背景图；便笺和待办的透明程度也在这里调。' },
           h('div', { className: 'dsan-set-row', style: { display: 'flex', gap: 10, alignItems: 'center' } },
             h('div', { style: { width: 96, height: 60, borderRadius: 8, backgroundImage: `url(${background ? assetUrl(background) : pluginAsset('earth-hero.webp')})`, backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid var(--dsw-alias-border-l2)', flex: 'none' } }),
             h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
@@ -2388,7 +2388,7 @@ window.__ModuleLoader__.load({
           })),
           h('div', { className: 'dsan-set-hint' }, '输入框里按上下方向键可回溯最近几条记录。')),
 
-        h(SettingsSection, { title: '提醒', desc: '待办内容里出现明确时间会创建提醒，到点在右上角弹卡片。' },
+        h(SettingsSection, { title: '提醒与声音', desc: '待办内容里出现明确时间会创建提醒，到点在右上角弹卡片。' },
           h('div', { className: 'dsan-set-row' },
             h(Switch, {
               checked: systemNotifications,
@@ -2484,21 +2484,14 @@ window.__ModuleLoader__.load({
               }),
               h('span', { style: { width: 34 } }, `${reminderSpeechVolume}%`)))),
 
-        h(SettingsSection, { title: '数据清理', desc: '删除的笔记和笔记本会先进废纸篓，超过保留天数才真正清理。' },
+        h(SettingsSection, { title: '数据与隐私', desc: '删除的笔记和笔记本会先进废纸篓，超过保留天数才真正清理。' },
           h(Field, { label: '废纸篓保留天数' }, h('input', {
             type: 'number', min: 1, max: 365, value: trashDays,
             onChange: (event) => { const next = Number(event.target.value); setTrashDays(next); patchSoon({ trashDays: next }) },
           })),
-          h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。')),
+          h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。隐私模式只是隐藏笔记本，不加密文件。')),
 
-        h(SettingsSection, { title: 'MCP 连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。安装 Skill 后，其他 AI 可按说明连接。', action: h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => pushToast({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => pushToast({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill') },
-          h('div', { className: 'dsan-set-hint', style: { marginBottom: 8, wordBreak: 'break-all' } }, mcpUrl),
-          h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
-            h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
-            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
-            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
-            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
-        h(SettingsSection, { title: '模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
+        h(SettingsSection, { title: 'Agent 与模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
           h(Field, { label: 'Agent 引擎' }, h('select', { value: agentEngine, onChange: (event) => { const next = event.target.value === 'native' ? 'native' : 'json'; setAgentEngine(next); patchSoon({ agentEngine: next }) } },
             h('option', { value: 'native' }, '原生工具调用（默认，验证中）'),
             h('option', { value: 'json' }, 'JSON ReAct（兼容回退）'))),
@@ -2506,6 +2499,7 @@ window.__ModuleLoader__.load({
           h(Field, { label: 'Shadow 校验' }, h('label', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
             h('input', { type: 'checkbox', checked: agentShadow, onChange: (event) => { const next = event.target.checked; setAgentShadow(next); patchSoon({ agentShadow: next }) } }),
             h('span', { style: { fontSize: 12 } }, '记录 JSON 工具调用与原生 schema 的差异'))),
+          h('div', { style: { fontWeight: 600, fontSize: 12, margin: '14px 0 8px' } }, '运行限制'),
           h(Field, { label: 'ReAct 最大轮次' }, h('input', {
             type: 'number', min: 1, max: 50, value: reactMaxRounds,
             onChange: (event) => { const next = Number(event.target.value); setReactMaxRounds(next); patchSoon({ reactMaxRounds: next }) },
@@ -2516,10 +2510,12 @@ window.__ModuleLoader__.load({
             h(Field, { label: '网页正文字符' }, h('input', { type: 'number', min: 1000, max: 200000, value: webFetchMaxChars, onChange: (event) => { const next = Number(event.target.value); setWebFetchMaxChars(next); patchSoon({ webFetchMaxChars: next }) } })),
             h(Field, { label: '单次读取字符' }, h('input', { type: 'number', min: 1000, max: 200000, value: readNoteMaxChars, onChange: (event) => { const next = Number(event.target.value); setReadNoteMaxChars(next); patchSoon({ readNoteMaxChars: next }) } }))),
           h(Field, { label: '网页抓取超时（毫秒）' }, h('input', { type: 'number', min: 1000, max: 300000, value: webTimeoutMs, onChange: (event) => { const next = Number(event.target.value); setWebTimeoutMs(next); patchSoon({ webTimeoutMs: next }) } })),
+          h('div', { style: { fontWeight: 600, fontSize: 12, margin: '14px 0 8px' } }, '日志'),
           h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 } },
             h(Field, { label: '日志保留天数' }, h('input', { type: 'number', min: 1, max: 3650, value: agentLogRetentionDays, onChange: (event) => { const next = Number(event.target.value); setAgentLogRetentionDays(next); patchSoon({ agentLogRetentionDays: next }) } })),
             h(Field, { label: '自动清理间隔（天）' }, h('input', { type: 'number', min: 1, max: 3650, value: agentLogCleanupIntervalDays, onChange: (event) => { const next = Number(event.target.value); setAgentLogCleanupIntervalDays(next); patchSoon({ agentLogCleanupIntervalDays: next }) } }))),
           h('button', { type: 'button', className: 'dsan-btn small', onClick: async () => { try { const res = await api('agent.logs.cleanup', { days: agentLogRetentionDays }); pushToast({ title: `已清理 ${res.removed || 0} 份日志` }) } catch (err) { pushToast({ title: '清理失败', body: err.message }) } } }, '立即清理旧日志'),
+          h('div', { style: { fontWeight: 600, fontSize: 12, margin: '14px 0 8px' } }, '模型选择'),
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, 'provider 和 model 从 DSH 已注册的模型服务读取；API Key、Base URL、协议先在 DSH 模型设置里配好。两项都选好才生效。'),
           h('div', { style: { display: 'flex', justifyContent: 'flex-end', marginBottom: 8 } },
             h('button', {
@@ -2560,6 +2556,14 @@ window.__ModuleLoader__.load({
               })),
           h('div', { className: 'dsan-set-hint' }, 'provider 是服务商标识，model 是具体模型 ID，不是展示名称。')),
 
+        h(SettingsSection, { title: '外部连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。安装 Skill 后，其他 AI 可按说明连接。', action: h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => pushToast({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => pushToast({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill') },
+          h('div', { className: 'dsan-set-hint', style: { marginBottom: 8, wordBreak: 'break-all' } }, mcpUrl),
+          h('div', { className: 'dsan-set-hint', style: { marginBottom: 8 } }, '仅监听本机。Token 等同于直接写入权限，只提供给可信的 AI 客户端。'),
+          h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
+            h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
         h(SettingsSection, { title: '支持随记', desc: '如果对你有帮助，可以请我喝杯咖啡，感谢支持~' },
           h('div', { style: { display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start', paddingBottom: 10 } },
             h('div', { style: { textAlign: 'center' } },
