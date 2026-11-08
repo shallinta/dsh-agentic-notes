@@ -2349,7 +2349,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsan-settings-avatar-shell' },
             h('div', { className: 'dsan-settings-avatar-wrap' },
               h('img', { className: 'dsan-settings-avatar', src: pluginAsset('suiji-logo.webp'), alt: '随记 logo' })),
-            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.1.0'))),
+            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.2.0'))),
         h(SettingsSection, { title: '笔记库', desc: '所有笔记、日记、便笺和提醒都存在这个目录里。' },
           h('div', { className: 'dsan-set-row' },
             h('div', { style: { fontSize: 12, lineHeight: 1.6, wordBreak: 'break-all', marginBottom: 8 } }, `当前目录：${root}`),

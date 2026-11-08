@@ -5,7 +5,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square" alt="version 0.1.0">
+  <img src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" alt="version 0.2.0">
   <img src="https://img.shields.io/badge/DSH-plugin-5B8DEF?style=flat-square" alt="DSH plugin">
   <img src="https://img.shields.io/badge/storage-local%20Markdown-2EA44F?style=flat-square" alt="local Markdown">
 </p>
