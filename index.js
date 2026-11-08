@@ -4106,7 +4106,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     }
     const result = await runNativeToolLoop({
       llm: ctx.get('llm'), provider: sel.provider, model: sel.model,
-      messages, system: '你是随记的笔记代理。使用工具读写笔记；简单写入可直接执行，长笔记内容、批量删除/移动和设置修改必须暂存等待确认。完成后调用 finish。',
+      messages, system: '你是随记的笔记代理。使用工具读写笔记；简单写入可直接执行；正文达到 500 字、一次删除多篇、一次移动多篇和设置修改必须暂存等待确认。完成后调用 finish。',
       tools: nativeAgentToolSchemas, executeTool: createNativeToolExecutor(service),
       maxRounds: Math.max(1, Math.min(50, Number(readConfig().reactMaxRounds) || 20)),
       maxToolCalls: 60, isCancelled: () => job.cancelled,
