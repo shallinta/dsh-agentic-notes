@@ -3668,7 +3668,7 @@ function pinnedGet(target, address, timeoutMs, deadline) {
     const transport = target.protocol === 'https:' ? https : http
     const family = net.isIP(address) || 4
     let req
-    const hard = setTimeout(() => { try { req?.destroy(new Error('网页抓取超时')) } catch { /* ignore */ } }, Math.max(1000, Number(timeoutMs) || 60000))
+    const hard = setTimeout(() => { try { req?.destroy(new Error('网页抓取超时')) } catch { /* ignore */ } }, Math.max(1, Number(timeoutMs) || 60000))
     try { req = transport.request(target, {
       method: 'GET',
       headers: { 'user-agent': 'Mozilla/5.0 dsh-agentic-notes', accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1' },
@@ -3688,14 +3688,14 @@ function pinnedGet(target, address, timeoutMs, deadline) {
       res.on('end', () => { clearTimeout(hard); if (Date.now() > deadline) reject(new Error('网页抓取超时')); else resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }) })
       res.on('error', (err) => { clearTimeout(hard); reject(err) })
     }) } catch (err) { clearTimeout(hard); reject(err); return }
-    req.setTimeout(Math.max(1000, Number(timeoutMs) || 60000), () => req.destroy(new Error('网页抓取超时')))
+    req.setTimeout(Math.max(1, Number(timeoutMs) || 60000), () => req.destroy(new Error('网页抓取超时')))
     req.on('error', (err) => { clearTimeout(hard); reject(err) })
     req.end()
   })
 }
 async function fetchWebText(url, maxChars = 16000, timeoutMs = 60000) {
   const controller = new AbortController()
-  const total = Math.max(1000, Number(timeoutMs) || 60000)
+  const total = Math.max(1, Number(timeoutMs) || 60000)
   const deadline = Date.now() + total
   const timer = setTimeout(() => controller.abort(), total)
   const resolveInTime = async (value) => {
@@ -3859,15 +3859,21 @@ function simulateOperations(root, operations) {
   const contents = new Map()
   const noteIds = new Map()
   const movedIds = new Set()
+  const tombstones = new Set()
   const getBook = (name) => {
-    const key = safeName(name || '')
-    if (!books.has(key)) books.set(key, new Set(listNoteFiles(root, key).map((note) => note.path)))
+    const key = safeName(name || '').toLowerCase()
+    if (!books.has(key)) {
+      let actual = key
+      try { actual = fs.readdirSync(root).find((entry) => entry.toLowerCase() === key) || key } catch { /* ignore */ }
+      books.set(key, new Set(listNoteFiles(root, actual).map((note) => note.path.toLowerCase())))
+    }
     return books.get(key)
   }
   const lower = (rel) => String(rel).toLowerCase()
   const findPath = (files, rel) => [...files].find((value) => lower(value) === lower(rel)) || ''
   const contentOf = (rel) => {
     if (contents.has(lower(rel))) return contents.get(lower(rel))
+    if (tombstones.has(lower(rel))) return ''
     try {
       const body = readNote(root, rel).body
       contents.set(lower(rel), body)
@@ -3876,16 +3882,17 @@ function simulateOperations(root, operations) {
   }
   const idOf = (rel) => noteIds.get(lower(rel)) || lower(rel)
   const unique = (book, base) => {
+    const key = String(book).toLowerCase()
     let name = base
     let suffix = 2
-    while (findPath(getBook(book), `${book}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
-    return `${book}/${name}`
+    while (findPath(getBook(key), `${key}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
+    return `${key}/${name}`
   }
   const remove = (rel) => {
     const book = path.posix.dirname(rel)
     const files = getBook(book)
     const actual = findPath(files, rel)
-    if (actual) { files.delete(actual); contents.delete(lower(actual)); noteIds.delete(lower(actual)); return true }
+    if (actual) { files.delete(actual); contents.delete(lower(actual)); noteIds.delete(lower(actual)); tombstones.add(lower(actual)); return true }
     return false
   }
   let notes = 0
@@ -3893,8 +3900,8 @@ function simulateOperations(root, operations) {
   for (const op of operations || []) {
     const kind = String(op?.op || '')
     if (kind === 'renameNotebook') {
-      const oldName = safeName(op.notebook || '')
-      const newName = safeName(op.title || '')
+      const oldName = safeName(op.notebook || '').toLowerCase()
+      const newName = safeName(op.title || '').toLowerCase()
       const oldPaths = [...getBook(oldName)]
       const moved = new Set(oldPaths.map((rel) => `${newName}/${rel.slice(oldName.length + 1)}`))
       books.set(oldName, new Set())
@@ -3905,27 +3912,30 @@ function simulateOperations(root, operations) {
         noteIds.set(lower(newRel), idOf(oldRel))
         contents.delete(lower(oldRel))
         noteIds.delete(lower(oldRel))
+        tombstones.add(lower(oldRel))
       }
     } else if (kind === 'deleteNotebook') {
-      const name = safeName(op.notebook || '')
+      const name = safeName(op.notebook || '').toLowerCase()
       notes += getBook(name).size
       books.set(name, new Set())
     } else if (kind === 'delete') {
       if (remove(normalizeAgentRel(op.path))) notes += 1
     } else if (kind === 'create') {
-      const book = safeName(op.notebook || '')
+      const book = safeName(op.notebook || '').toLowerCase()
       const rel = unique(book, `${safeName(op.title || '新笔记')}.md`)
       getBook(book).add(rel)
+      tombstones.delete(lower(rel))
       contents.set(lower(rel), String(op.body || ''))
       noteIds.set(lower(rel), lower(rel))
       if (bodyLength(op.body || '') >= 500) long = true
     } else if (kind === 'write') {
       const requested = normalizeAgentRel(op.path)
-      const files = getBook(path.posix.dirname(requested))
+      const files = getBook(path.posix.dirname(requested).toLowerCase())
       const rel = findPath(files, requested) || requested
       const before = contentOf(rel)
       const next = splitFrontmatter(op.content || '').body
       files.add(rel)
+      tombstones.delete(lower(rel))
       if (!noteIds.has(lower(rel))) noteIds.set(lower(rel), lower(rel))
       contents.set(lower(rel), next)
       if (bodyLength(before) >= 500 || bodyLength(next) >= 500) long = true
@@ -3933,21 +3943,23 @@ function simulateOperations(root, operations) {
       const rel = normalizeAgentRel(op.path)
       const id = idOf(rel)
       const body = contentOf(rel)
-      remove(rel)
       const book = path.posix.dirname(rel)
       const actual = unique(book, `${safeName(op.title || '新笔记')}.md`)
+      remove(rel)
       getBook(book).add(actual)
+      tombstones.delete(lower(actual))
       noteIds.set(lower(actual), id)
       contents.set(lower(actual), body)
     } else if (kind === 'move') {
       const rel = normalizeAgentRel(op.path)
       const id = idOf(rel)
       const body = contentOf(rel)
-      remove(rel)
-      const book = safeName(op.notebook || '')
+      const book = safeName(op.notebook || '').toLowerCase()
       const base = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
       const actual = unique(book, base)
+      remove(rel)
       getBook(book).add(actual)
+      tombstones.delete(lower(actual))
       noteIds.set(lower(actual), id)
       contents.set(lower(actual), body)
       movedIds.add(id)

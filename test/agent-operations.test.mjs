@@ -365,7 +365,7 @@ test('case-insensitive collision cannot hide a long note', async () => {
   fs.writeFileSync(path.join(root, 'Test', 'case.md'), `# long\n\n${'长'.repeat(600)}\n`)
   await assert.rejects(() => applyAgentOperations(root, [
     { op: 'rename', path: 'Test/case.md', title: 'CASE' },
-    { op: 'write', path: 'Test/case.md', content: '# short\n' },
+    { op: 'write', path: 'Test/case-2.md', content: '# short\n' },
   ], 'test'), /需要用户确认/)
   fs.rmSync(root, { recursive: true, force: true })
 })
@@ -387,6 +387,17 @@ test('moving the same note twice counts as one note move', async () => {
   const out = await applyAgentOperations(root, [
     { op: 'move', path: 'Test/a.md', notebook: 'A' },
     { op: 'move', path: 'A/a.md', notebook: 'B' },
+  ], 'test', null, false)
+  assert.equal(out.errors.length, 0)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('after renaming a long note, writing the old empty path needs no confirmation', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'long.md'), `# long\n\n${'长'.repeat(600)}\n`)
+  const out = await applyAgentOperations(root, [
+    { op: 'rename', path: 'Test/long.md', title: 'moved' },
+    { op: 'write', path: 'Test/long.md', content: '# new short\n' },
   ], 'test', null, false)
   assert.equal(out.errors.length, 0)
   fs.rmSync(root, { recursive: true, force: true })
