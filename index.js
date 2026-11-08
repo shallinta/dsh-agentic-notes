@@ -3640,7 +3640,7 @@ function isPrivateIp(address) {
   const ip = String(address || '').replace(/^\[|\]$/g, '').toLowerCase()
   if (net.isIPv4(ip)) return /^(127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)
   if (net.isIPv6(ip)) {
-    if (ip === '::1' || ip === '::' || ip.startsWith('fe80:') || ip.startsWith('fc') || ip.startsWith('fd')) return true
+    if (ip === '::1' || ip === '::' || ip.startsWith('::ffff:') || ip.startsWith('fe80:') || ip.startsWith('fc') || ip.startsWith('fd')) return true
     const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
     if (mapped) return isPrivateIp(mapped[1])
   }
@@ -5757,4 +5757,4 @@ async function dispatchUnlocked(ctx, op, args) {
   }
 }
 
-export { applyAgentOperations, undoAgentRun, callHttpMcpTool };
+export { applyAgentOperations, undoAgentRun, callHttpMcpTool, assertPublicUrl };
