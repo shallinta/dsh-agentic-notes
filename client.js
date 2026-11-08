@@ -4145,6 +4145,13 @@ window.__ModuleLoader__.load({
             onStopPeriodic: () => stopPeriodicReminder(reminder),
           }))) : null,
         modal?.kind === 'newNotebook' ? h(NotebookModal, { onClose: () => setModal(null), pushToast, refresh }) : null,
+        modal?.kind === 'editNotebook' ? h(NotebookModal, {
+          initial: modal.notebook,
+          onClose: () => setModal(null),
+          onSaved: (notebook) => { setModal(null); if (notebook?.name) setView({ kind: 'notebook', name: notebook.name }); refresh() },
+          onDeleted: () => { setModal(null); setView({ kind: 'home' }); refresh() },
+          pushToast,
+        }) : null,
         ...surfaces.filter((surface) => surface.type !== 'toast').map(renderSurface),
         agentReplyOpen && agentThread ? h(AgentReplyModal, {
           thread: agentThread,
