@@ -884,7 +884,7 @@ window.__ModuleLoader__.load({
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
       }, [onClose])
-      return h('div', { className: 'dsan-overlay', onMouseDown: (event) => { if (event.target === event.currentTarget) onClose?.() } },
+      return h('div', { className: 'dsan-overlay' },
         h('div', { className: cls('dsan-modal', wide && 'wide'), role: 'dialog', 'aria-modal': 'true' },
           h('div', { className: 'dsan-modal-head' }, title, h('span', { className: 'sp' }),
             h('button', { className: 'dsan-btn ghost dsan-icon-btn', onClick: onClose, 'aria-label': '关闭' }, '×')),
