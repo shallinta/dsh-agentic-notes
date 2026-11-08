@@ -183,3 +183,34 @@ test('repeated writes to the same path preserve order', async () => {
   assert.equal(fs.readFileSync(path.join(root, 'Test/a.md'), 'utf8'), '# A\n')
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('rename notebook then delete it requires confirmation', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'b.md'), '# b\n')
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'renameNotebook', notebook: 'Test', title: 'Renamed' },
+    { op: 'deleteNotebook', notebook: 'Renamed' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('move into a notebook then delete it requires confirmation', async () => {
+  const root = tempRoot()
+  fs.mkdirSync(path.join(root, 'Target'))
+  fs.writeFileSync(path.join(root, 'Target', 'b.md'), '# b\n')
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.notebooks.push({ name: 'Target' })
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'move', path: 'Test/a.md', notebook: 'Target' },
+    { op: 'deleteNotebook', notebook: 'Target' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('separator-wrapped long body still requires confirmation', async () => {
+  const root = tempRoot()
+  const body = `---\n${'长'.repeat(600)}\n---`
+  await assert.rejects(() => applyAgentOperations(root, [{ op: 'create', notebook: 'Test', title: 'long', body }], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})

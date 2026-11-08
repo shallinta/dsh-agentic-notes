@@ -3472,7 +3472,7 @@ window.__ModuleLoader__.load({
             if (surface.captureId) api('capture.answer', { id: surface.captureId, questionId: surface.id, optionId: 'cancel', label: '取消' }).catch(() => { })
             else if (surface.waitingJob || surface.jobId || surface.kind === 'progress' || surface.kind === 'confirm') {
               const jobId = surface.waitingJob || surface.jobId || agentJobRef.current
-              api('surface.close', { jobId, surfaceId: surface.id }).catch(() => { if (jobId) api('agent.cancelJob', { id: jobId }).catch(() => { }) })
+              api('surface.close', { jobId, surfaceId: surface.id, pendingId: surface.pendingId || '' }).catch(() => { if (jobId) api('agent.cancelJob', { id: jobId }).catch(() => { }) })
             } else surfaceResolvers.current.get(surface.id)?.({ optionId: 'cancel', label: '取消' })
           },
           onAnswer: (answer) => {

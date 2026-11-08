@@ -3800,38 +3800,81 @@ function dedupeOperations(operations) {
   return out
 }
 function bodyLength(text) {
-  return [...String(splitFrontmatter(text).body || '')].length
+  const raw = String(text || '')
+  let body = raw
+  if (/^---\s*\n/.test(raw)) {
+    const end = raw.indexOf('\n---', 4)
+    if (end > 0) {
+      const block = raw.slice(4, end)
+      if (/^[A-Za-z_][\w-]*\s*:/m.test(block)) body = raw.slice(end + 4).replace(/^\n+/, '')
+    }
+  }
+  return [...body].length
+}
+function simulateImpact(root, operations) {
+  const state = new Map()
+  const get = (name) => {
+    const key = safeName(name || '')
+    if (!state.has(key)) state.set(key, new Set(listNoteFiles(root, key).map((note) => note.path)))
+    return state.get(key)
+  }
+  let affected = 0
+  let moves = 0
+  for (const op of operations || []) {
+    const kind = String(op?.op || '')
+    if (kind === 'renameNotebook') {
+      const oldName = safeName(op.notebook || '')
+      const newName = safeName(op.title || '')
+      const oldPaths = new Set([...get(oldName)].map((notePath) => `${newName}/${notePath.slice(oldName.length + 1)}`))
+      state.delete(oldName)
+      state.set(newName, oldPaths)
+    } else if (kind === 'deleteNotebook') {
+      const name = safeName(op.notebook || '')
+      affected += get(name).size
+      state.set(name, new Set())
+    } else if (kind === 'delete' || kind === 'fileDelete') {
+      const rel = normalizeAgentRel(op.path)
+      const notebook = path.posix.dirname(rel)
+      const files = get(notebook)
+      if (files.delete(rel)) affected += 1
+    } else if (kind === 'move' || kind === 'fileMove') {
+      const rel = normalizeAgentRel(op.path)
+      const source = path.posix.dirname(rel)
+      get(source).delete(rel)
+      const target = safeName(op.notebook || '')
+      const name = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
+      get(target).add(`${target}/${name}`)
+      moves += 1
+    } else if (kind === 'rename') {
+      const rel = normalizeAgentRel(op.path)
+      const notebook = path.posix.dirname(rel)
+      get(notebook).delete(rel)
+      get(notebook).add(`${notebook}/${safeName(op.title || '新笔记')}.md`)
+    } else if (kind === 'create') {
+      const notebook = safeName(op.notebook || '')
+      get(notebook).add(`${notebook}/${safeName(op.title || '新笔记')}.md`)
+    }
+  }
+  return { notes: affected, moves }
 }
 function requiresConfirmation(root, operations, prior = {}) {
   const list = Array.isArray(operations) ? operations : []
-  let deletes = 0
-  let moves = Number(prior.moves) || 0
-  let affectedNotes = Number(prior.notes) || 0
+  if (list.some((op) => ['settingsUpdate', 'setPrivacyMode', 'setNotebookPrivate'].includes(String(op?.op || '')))) return true
+  let long = false
   for (const op of list) {
-    const kind = String(op?.op || '')
-    if (kind === 'settingsUpdate' || kind === 'setPrivacyMode' || kind === 'setNotebookPrivate') return true
-    if (kind === 'deleteNotebook') affectedNotes += listNoteFiles(root, safeName(op.notebook || '')).length
-    if (kind === 'delete' || kind === 'fileDelete') { deletes += 1; affectedNotes += 1 }
-    if (kind === 'move' || kind === 'fileMove') moves += 1
-    if (kind === 'write') {
+    if (op.op === 'write') {
       let before = ''
       try { before = readNote(root, normalizeAgentRel(op.path)).body } catch { /* new target */ }
-      if (bodyLength(before) >= 500 || bodyLength(op.content || '') >= 500) return true
+      if (bodyLength(before) >= 500 || bodyLength(op.content || '') >= 500) long = true
     }
-    if (kind === 'create' && bodyLength(op.body || '') >= 500) return true
+    if (op.op === 'create' && bodyLength(op.body || '') >= 500) long = true
   }
-  return affectedNotes > 1 || deletes > 1 || moves > 1
+  if (long) return true
+  const impact = simulateImpact(root, list)
+  return impact.notes + (Number(prior.notes) || 0) > 1 || impact.moves + (Number(prior.moves) || 0) > 1
 }
-
-function isDedupable(op) { return ['todoAdd', 'memoCreate'].includes(op?.op) }
 function taskImpact(root, operations) {
-  const stats = { notes: 0, moves: 0 }
-  for (const op of operations || []) {
-    if (op.op === 'delete') stats.notes += 1
-    if (op.op === 'deleteNotebook') stats.notes += listNoteFiles(root, safeName(op.notebook || '')).length
-    if (op.op === 'move' || op.op === 'fileMove') stats.moves += 1
-  }
-  return stats
+  return simulateImpact(root, operations)
 }
 function addTaskImpact(job, stats) {
   job.taskStats = { notes: (job.taskStats?.notes || 0) + stats.notes, moves: (job.taskStats?.moves || 0) + stats.moves }
@@ -4443,7 +4486,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
   if (staged.length && !requiresConfirmation(root, staged, job.taskStats)) {
     try {
       const impact = taskImpact(root, staged)
-      const out = await applyAgentOperations(root, staged, instruction, baseSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
+      const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
       if (!out.errors?.length) {
         job.baselineSignature = stateSignature(root, readManifest(root))
         addTaskImpact(job, impact)
