@@ -4,7 +4,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-agentic-notes',
+  id: '@suiji-ai/dsh-agentic-notes',
   factory(require) {
     const React = require('react')
     const h = React.createElement
