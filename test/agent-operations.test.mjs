@@ -402,3 +402,13 @@ test('after renaming a long note, writing the old empty path needs no confirmati
   assert.equal(out.errors.length, 0)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('automatic short write cannot silently remove image references', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'a.png'), 'img')
+  fs.writeFileSync(path.join(root, 'Test', 'img.md'), '# img\n\n![x](a.png)\n')
+  const out = await applyAgentOperations(root, [{ op: 'write', path: 'Test/img.md', content: '# img\n\nno image\n' }], 'test')
+  assert.equal(out.errors.length, 1)
+  assert.match(out.errors[0], /移除图片引用/)
+  fs.rmSync(root, { recursive: true, force: true })
+})

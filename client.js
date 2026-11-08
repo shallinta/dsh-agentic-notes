@@ -1819,6 +1819,7 @@ window.__ModuleLoader__.load({
       const localBody = useRef('')
       const prevDoc = useRef(doc)
       const captureCount = state.captures?.length || 0
+      const reloadDoc = () => api('diary.doc', { doc }).then((data) => { setNote(data); localBody.current = data.body }).catch(() => { })
       useEffect(() => {
         const changed = prevDoc.current !== doc
         prevDoc.current = doc
@@ -1862,7 +1863,7 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'dsan-page dsan-note-page' },
         h('div', { className: 'dsan-note-head' },
           h('h1', { className: 'dsan-note-title' }, date),
-          h('button', { className: 'dsan-btn', onClick: () => setEditing((v) => !v) }, editing ? '读' : '编辑')),
+          h('button', { className: 'dsan-btn', onClick: () => { if (editing) reloadDoc(); setEditing((v) => !v) } }, editing ? '读' : '编辑')),
         conflict ? h('div', { className: 'dsan-conflict' },
           h('span', null, '这个文件被外面的程序改过了。'),
           h('button', { className: 'dsan-btn small', onClick: () => { setConflict(null); api('diary.doc', { doc }).then(setNote) } }, '载入磁盘版本'),
