@@ -3048,6 +3048,7 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
           const rel = decodeRel(String(op.path || ''))
           const abs = absPath(root, rel)
           if (!fs.existsSync(abs)) throw new Error(`找不到要删除的笔记：${rel}`)
+          if (!fs.statSync(abs).isFile()) throw new Error('delete 只能删除单篇笔记；删除笔记本请用 deleteNotebook')
           moveToTrash(root, abs, path.basename(abs))
           removeNoteOrderPath(currentManifest, rel)
           currentManifest.deletedNotes = { ...(currentManifest.deletedNotes || {}), [rel]: nowIso() }
@@ -3662,7 +3663,7 @@ async function resolvePublicTarget(raw) {
 async function assertPublicUrl(raw) {
   return (await resolvePublicTarget(raw)).target
 }
-function pinnedGet(target, address, timeoutMs) {
+function pinnedGet(target, address, timeoutMs, deadline) {
   return new Promise((resolve, reject) => {
     const transport = target.protocol === 'https:' ? https : http
     const family = net.isIP(address) || 4
@@ -3684,7 +3685,7 @@ function pinnedGet(target, address, timeoutMs) {
         if (size > 5 * 1024 * 1024) { req.destroy(new Error('网页内容超过 5MB')); return }
         chunks.push(chunk)
       })
-      res.on('end', () => { clearTimeout(hard); resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }) })
+      res.on('end', () => { clearTimeout(hard); if (Date.now() > deadline) reject(new Error('网页抓取超时')); else resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }) })
       res.on('error', (err) => { clearTimeout(hard); reject(err) })
     }) } catch (err) { clearTimeout(hard); reject(err); return }
     req.setTimeout(Math.max(1000, Number(timeoutMs) || 60000), () => req.destroy(new Error('网页抓取超时')))
@@ -3715,7 +3716,7 @@ async function fetchWebText(url, maxChars = 16000, timeoutMs = 60000) {
       if (controller.signal.aborted) throw new Error('网页抓取超时')
       const remaining = deadline - Date.now()
       if (remaining <= 0) throw new Error('网页抓取超时')
-      res = await pinnedGet(resolved.target, resolved.addresses[0].address, remaining)
+      res = await pinnedGet(resolved.target, resolved.addresses[0].address, remaining, deadline)
       if (![301, 302, 303, 307, 308].includes(res.status)) break
       if (!res.location) break
       resolved = await resolveInTime(new URL(res.location, resolved.target.href).href)
@@ -3856,31 +3857,38 @@ function bodyLength(text) {
 function simulateOperations(root, operations) {
   const books = new Map()
   const contents = new Map()
+  const noteIds = new Map()
+  const movedIds = new Set()
   const getBook = (name) => {
     const key = safeName(name || '')
     if (!books.has(key)) books.set(key, new Set(listNoteFiles(root, key).map((note) => note.path)))
     return books.get(key)
   }
+  const lower = (rel) => String(rel).toLowerCase()
+  const findPath = (files, rel) => [...files].find((value) => lower(value) === lower(rel)) || ''
   const contentOf = (rel) => {
-    if (contents.has(rel)) return contents.get(rel)
+    if (contents.has(lower(rel))) return contents.get(lower(rel))
     try {
       const body = readNote(root, rel).body
-      contents.set(rel, body)
+      contents.set(lower(rel), body)
       return body
     } catch { return '' }
   }
+  const idOf = (rel) => noteIds.get(lower(rel)) || lower(rel)
   const unique = (book, base) => {
     let name = base
     let suffix = 2
-    while (getBook(book).has(`${book}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
+    while (findPath(getBook(book), `${book}/${name}`)) { name = `${base.replace(/\.md$/, '')}-${suffix}.md`; suffix += 1 }
     return `${book}/${name}`
   }
   const remove = (rel) => {
     const book = path.posix.dirname(rel)
-    return getBook(book).delete(rel)
+    const files = getBook(book)
+    const actual = findPath(files, rel)
+    if (actual) { files.delete(actual); contents.delete(lower(actual)); noteIds.delete(lower(actual)); return true }
+    return false
   }
   let notes = 0
-  let moves = 0
   let long = false
   for (const op of operations || []) {
     const kind = String(op?.op || '')
@@ -3889,11 +3897,14 @@ function simulateOperations(root, operations) {
       const newName = safeName(op.title || '')
       const oldPaths = [...getBook(oldName)]
       const moved = new Set(oldPaths.map((rel) => `${newName}/${rel.slice(oldName.length + 1)}`))
-      books.delete(oldName)
+      books.set(oldName, new Set())
       books.set(newName, moved)
       for (const oldRel of oldPaths) {
         const newRel = `${newName}/${oldRel.slice(oldName.length + 1)}`
-        contents.set(newRel, contentOf(oldRel))
+        contents.set(lower(newRel), contentOf(oldRel))
+        noteIds.set(lower(newRel), idOf(oldRel))
+        contents.delete(lower(oldRel))
+        noteIds.delete(lower(oldRel))
       }
     } else if (kind === 'deleteNotebook') {
       const name = safeName(op.notebook || '')
@@ -3905,47 +3916,57 @@ function simulateOperations(root, operations) {
       const book = safeName(op.notebook || '')
       const rel = unique(book, `${safeName(op.title || '新笔记')}.md`)
       getBook(book).add(rel)
-      contents.set(rel, String(op.body || ''))
+      contents.set(lower(rel), String(op.body || ''))
+      noteIds.set(lower(rel), lower(rel))
       if (bodyLength(op.body || '') >= 500) long = true
     } else if (kind === 'write') {
-      const rel = normalizeAgentRel(op.path)
+      const requested = normalizeAgentRel(op.path)
+      const files = getBook(path.posix.dirname(requested))
+      const rel = findPath(files, requested) || requested
       const before = contentOf(rel)
       const next = splitFrontmatter(op.content || '').body
-      getBook(path.posix.dirname(rel)).add(rel)
-      contents.set(rel, next)
+      files.add(rel)
+      if (!noteIds.has(lower(rel))) noteIds.set(lower(rel), lower(rel))
+      contents.set(lower(rel), next)
       if (bodyLength(before) >= 500 || bodyLength(next) >= 500) long = true
     } else if (kind === 'rename') {
       const rel = normalizeAgentRel(op.path)
+      const id = idOf(rel)
       const body = contentOf(rel)
       remove(rel)
       const book = path.posix.dirname(rel)
       const actual = unique(book, `${safeName(op.title || '新笔记')}.md`)
       getBook(book).add(actual)
-      contents.set(actual, body)
+      noteIds.set(lower(actual), id)
+      contents.set(lower(actual), body)
     } else if (kind === 'move') {
       const rel = normalizeAgentRel(op.path)
+      const id = idOf(rel)
       const body = contentOf(rel)
       remove(rel)
       const book = safeName(op.notebook || '')
       const base = op.title ? `${safeName(op.title)}.md` : path.posix.basename(rel)
       const actual = unique(book, base)
       getBook(book).add(actual)
-      contents.set(actual, body)
-      moves += 1
+      noteIds.set(lower(actual), id)
+      contents.set(lower(actual), body)
+      movedIds.add(id)
     } else if (kind === 'fileMove' || kind === 'fileCopy') {
       const from = normalizeAgentRel(op.from)
       const to = normalizeAgentRel(op.to)
       if (from.endsWith('.md')) {
+        const id = idOf(from)
         const body = contentOf(from)
-        if (kind === 'fileMove') { remove(from); moves += 1 }
+        if (kind === 'fileMove') { remove(from); movedIds.add(id) }
         const book = path.posix.dirname(to)
         const actual = unique(book, path.posix.basename(to))
         getBook(book).add(actual)
-        contents.set(actual, body)
+        noteIds.set(lower(actual), id)
+        contents.set(lower(actual), body)
       }
     }
   }
-  return { notes, moves, long }
+  return { notes, moves: movedIds.size, long }
 }
 function requiresConfirmation(root, operations, prior = {}) {
   const result = simulateOperations(root, operations)

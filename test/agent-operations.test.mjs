@@ -359,3 +359,35 @@ test('moving an image into a one-note notebook then deleting it needs no confirm
   assert.equal(out.errors.length, 0)
   fs.rmSync(root, { recursive: true, force: true })
 })
+
+test('case-insensitive collision cannot hide a long note', async () => {
+  const root = tempRoot()
+  fs.writeFileSync(path.join(root, 'Test', 'case.md'), `# long\n\n${'长'.repeat(600)}\n`)
+  await assert.rejects(() => applyAgentOperations(root, [
+    { op: 'rename', path: 'Test/case.md', title: 'CASE' },
+    { op: 'write', path: 'Test/case.md', content: '# short\n' },
+  ], 'test'), /需要用户确认/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('delete cannot remove a notebook directory', async () => {
+  const root = tempRoot()
+  const out = await applyAgentOperations(root, [{ op: 'delete', path: 'Test' }], 'test', null, true)
+  assert.equal(out.errors.length, 1)
+  assert.match(out.errors[0], /deleteNotebook/)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('moving the same note twice counts as one note move', async () => {
+  const root = tempRoot()
+  fs.mkdirSync(path.join(root, 'A')); fs.mkdirSync(path.join(root, 'B'))
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.dsh-notebooks.json'), 'utf8'))
+  manifest.notebooks.push({ name: 'A' }, { name: 'B' })
+  fs.writeFileSync(path.join(root, '.dsh-notebooks.json'), JSON.stringify(manifest))
+  const out = await applyAgentOperations(root, [
+    { op: 'move', path: 'Test/a.md', notebook: 'A' },
+    { op: 'move', path: 'A/a.md', notebook: 'B' },
+  ], 'test', null, false)
+  assert.equal(out.errors.length, 0)
+  fs.rmSync(root, { recursive: true, force: true })
+})
