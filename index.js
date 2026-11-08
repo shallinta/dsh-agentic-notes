@@ -12,6 +12,8 @@ import crypto from 'node:crypto'
 import { execFile, execFileSync } from 'node:child_process'
 import dns from 'node:dns/promises'
 import net from 'node:net'
+import http from 'node:http'
+import https from 'node:https'
 import { fileURLToPath } from 'node:url'
 import { runNativeToolLoop, validateToolArguments } from './native-agent-loop.js'
 import { nativeAgentToolSchemas, createNativeToolExecutor } from './native-agent-tools.js'
@@ -3647,31 +3649,61 @@ function isPrivateIp(address) {
   }
   return false
 }
-async function assertPublicUrl(raw) {
+async function resolvePublicTarget(raw) {
   const target = new URL(String(raw))
   if (!['http:', 'https:'].includes(target.protocol)) throw new Error('只支持 http/https')
   const host = target.hostname.replace(/^\[|\]$/g, '')
   if (/^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/i.test(host) || isPrivateIp(host)) throw new Error('不能抓取本地或内网地址')
-  const addresses = net.isIP(host) ? [{ address: host }] : await dns.lookup(host, { all: true })
+  const addresses = net.isIP(host) ? [{ address: host, family: net.isIP(host) }] : await dns.lookup(host, { all: true })
   if (!addresses.length || addresses.some((entry) => isPrivateIp(entry.address))) throw new Error('不能抓取本地或内网地址')
-  return target
+  return { target, addresses }
+}
+async function assertPublicUrl(raw) {
+  return (await resolvePublicTarget(raw)).target
+}
+function pinnedGet(target, address, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const transport = target.protocol === 'https:' ? https : http
+    const family = net.isIP(address) || 4
+    const req = transport.request(target, {
+      method: 'GET',
+      headers: { 'user-agent': 'Mozilla/5.0 dsh-agentic-notes', accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.1' },
+      ...(target.protocol === 'https:' ? { servername: target.hostname } : {}),
+      lookup: (hostname, options, callback) => {
+        if (options && options.all) callback(null, [{ address, family }])
+        else callback(null, address, family)
+      },
+    }, (res) => {
+      const chunks = []
+      let size = 0
+      res.on('data', (chunk) => {
+        size += chunk.length
+        if (size > 5 * 1024 * 1024) { req.destroy(new Error('网页内容超过 5MB')); return }
+        chunks.push(chunk)
+      })
+      res.on('end', () => resolve({ status: res.statusCode || 0, location: res.headers.location || '', body: Buffer.concat(chunks).toString('utf8') }))
+      res.on('error', reject)
+    })
+    req.setTimeout(Math.max(1000, Number(timeoutMs) || 60000), () => req.destroy(new Error('网页抓取超时')))
+    req.on('error', reject)
+    req.end()
+  })
 }
 async function fetchWebText(url, maxChars = 16000, timeoutMs = 60000) {
-  let target = await assertPublicUrl(url)
+  let resolved = await resolvePublicTarget(url)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || 60000))
   try {
     let res = null
     for (let hop = 0; hop < 6; hop += 1) {
-      res = await fetch(target.href, { redirect: 'manual', signal: controller.signal, headers: { 'user-agent': 'Mozilla/5.0 dsh-agentic-notes' } })
+      if (controller.signal.aborted) throw new Error('网页抓取超时')
+      res = await pinnedGet(resolved.target, resolved.addresses[0].address, timeoutMs)
       if (![301, 302, 303, 307, 308].includes(res.status)) break
-      const location = res.headers.get('location')
-      if (!location) break
-      target = await assertPublicUrl(new URL(location, target.href).href)
+      if (!res.location) break
+      resolved = await resolvePublicTarget(new URL(res.location, resolved.target.href).href)
     }
-    if (!res || !res.ok) throw new Error(`网页返回 HTTP ${res?.status || 0}`)
-    const body = await res.text()
-    const text = body.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
+    if (!res || res.status < 200 || res.status >= 300) throw new Error(`网页返回 HTTP ${res?.status || 0}`)
+    const text = res.body.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()
     return text.slice(0, maxChars)
   } finally { clearTimeout(timer) }
 }
@@ -5836,4 +5868,4 @@ async function dispatchUnlocked(ctx, op, args) {
   }
 }
 
-export { applyAgentOperations, undoAgentRun, callHttpMcpTool, assertPublicUrl };
+export { applyAgentOperations, undoAgentRun, callHttpMcpTool, assertPublicUrl, fetchWebText };
