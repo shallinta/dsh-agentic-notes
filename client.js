@@ -1547,18 +1547,22 @@ window.__ModuleLoader__.load({
       const timer = useRef(null)
       const mtime = useRef(note.mtimeMs)
       const latest = useRef(note.body)
-      useEffect(() => { setBody(note.body); latest.current = note.body; mtime.current = note.mtimeMs }, [note.path, note.mtimeMs])
+      const savedText = useRef(note.body)
+      useEffect(() => { setBody(note.body); latest.current = note.body; savedText.current = note.body; mtime.current = note.mtimeMs }, [note.path, note.mtimeMs])
       const save = useCallback(async (text) => {
         setStatus('保存中')
         try {
           const res = await api('note.save', { path: note.path, content: text, mtimeMs: mtime.current })
-          if (res.conflict) { onConflict?.(res.content); setStatus('有冲突'); return }
+          if (res.conflict) { onConflict?.(res.content); setStatus('有冲突'); return { conflict: true, content: res.content } }
+          savedText.current = text
           mtime.current = new Date(res.updatedAt).getTime()
           setStatus('已保存')
           onSaved?.()
+          return res
         } catch (err) {
           setStatus('保存失败')
           pushToast?.({ title: '保存失败', body: err.message })
+          return null
         }
       }, [note.path])
       const onChange = (value) => {
@@ -1567,11 +1571,15 @@ window.__ModuleLoader__.load({
         onDirty?.(value)
         setStatus('未保存')
         if (timer.current) clearTimeout(timer.current)
-        timer.current = setTimeout(() => save(value), 800)
+        timer.current = setTimeout(() => { timer.current = null; save(value) }, 800)
       }
-      const flush = useCallback(() => save(latest.current), [save])
-      useEffect(() => { onRegister?.(flush); return () => { onRegister?.(null); if (timer.current) { clearTimeout(timer.current); save(latest.current) } } }, [flush, onRegister])
-      useEffect(() => () => { if (timer.current) { clearTimeout(timer.current); save(latest.current) } }, [])
+      const flush = useCallback(() => {
+        if (timer.current) { clearTimeout(timer.current); timer.current = null }
+        savedText.current = latest.current
+        return save(latest.current)
+      }, [save])
+      useEffect(() => { onRegister?.(flush); return () => onRegister?.(null) }, [flush])
+      useEffect(() => () => { if (timer.current) clearTimeout(timer.current); if (latest.current !== savedText.current) save(latest.current) }, [])
       return h('div', null,
         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
           h('span', { className: 'dsan-save' }, status),
@@ -1866,7 +1874,11 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'dsan-page dsan-note-page' },
         h('div', { className: 'dsan-note-head' },
           h('h1', { className: 'dsan-note-title' }, date),
-          h('button', { className: 'dsan-btn', onClick: () => { if (editing) { const pending = editorFlush.current?.(); if (pending?.finally) pending.finally(reloadDoc); else reloadDoc() } setEditing((v) => !v) } }, editing ? '读' : '编辑')),
+          h('button', { className: 'dsan-btn', onClick: () => { if (editing) {
+            const pending = editorFlush.current?.()
+            if (pending?.then) pending.then((result) => { if (!result?.conflict) reloadDoc() }, reloadDoc)
+            else reloadDoc()
+          } setEditing((v) => !v) } }, editing ? '读' : '编辑')),
         conflict ? h('div', { className: 'dsan-conflict' },
           h('span', null, '这个文件被外面的程序改过了。'),
           h('button', { className: 'dsan-btn small', onClick: () => { setConflict(null); api('diary.doc', { doc }).then(setNote) } }, '载入磁盘版本'),

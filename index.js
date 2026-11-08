@@ -797,11 +797,16 @@ function replaceDiaryLine(root, docRel, oldLine, newLine) {
 
 function imageRemovalNote(root, operations) {
   const lines = []
+  const aliases = new Map()
   for (const op of operations || []) {
+    if (op.op === 'rename' && op.path) aliases.set(normalizeAgentRel(`${path.posix.dirname(normalizeAgentRel(op.path))}/${safeName(op.title || '新笔记')}.md`), normalizeAgentRel(op.path))
+    if (op.op === 'move' && op.path) aliases.set(normalizeAgentRel(`${safeName(op.notebook || '')}/${op.title ? `${safeName(op.title)}.md` : path.posix.basename(normalizeAgentRel(op.path))}`), normalizeAgentRel(op.path))
     if (op.op !== 'write' || !op.path) continue
+    const target = normalizeAgentRel(op.path)
+    const beforePath = aliases.get(target) || target
     try {
-      const before = localImageRefs(root, op.path, fs.readFileSync(absPath(root, op.path), 'utf8'))
-      const after = localImageRefs(root, op.path, String(op.content || ''))
+      const before = localImageRefs(root, beforePath, fs.readFileSync(absPath(root, beforePath), 'utf8'))
+      const after = localImageRefs(root, target, String(op.content || ''))
       const removed = [...before].filter((image) => !after.has(image))
       if (removed.length) lines.push(`将移除图片引用：${removed.join('、')}`)
     } catch { /* ignore */ }
@@ -994,7 +999,7 @@ function isNoteEmpty(root, rel) {
   } catch { return true }
 }
 
-function renameNoteOnDisk(root, rel, nextTitle) {
+function renameNoteOnDisk(root, rel, nextTitle, updateDiaryLinks = true) {
   const { abs, rel: clean } = resolveNote(root, rel)
   const notebook = clean.split('/')[0]
   const cleanTitle = safeName(nextTitle, noteTitleOf(clean))
@@ -1014,7 +1019,7 @@ function renameNoteOnDisk(root, rel, nextTitle) {
   fs.writeFileSync(abs, `${buildFrontmatter({ ...data, updated: nowIso() })}${nextBody}`)
   fs.renameSync(abs, target)
   const nextRel = `${notebook}/${path.basename(target)}`
-  replaceDiaryLink(root, clean, nextRel)
+  if (updateDiaryLinks) replaceDiaryLink(root, clean, nextRel)
   return { path: nextRel, title: path.basename(target, '.md') }
 }
 
@@ -3080,9 +3085,10 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
           appliedLocal.push({ op: 'create', path: rel })
         } else if (kind === 'rename') {
           const oldPath = decodeRel(String(op.path || ''))
-          const res = renameNoteOnDisk(root, oldPath, String(op.title || ''))
+          const res = renameNoteOnDisk(root, oldPath, String(op.title || ''), false)
           replaceNoteOrderPath(currentManifest, oldPath, res.path)
           syncCaptureNotePath(root, currentManifest, oldPath, res.path)
+          replaceDiaryLink(root, oldPath, res.path)
           appliedLocal.push({ op: 'rename', path: res.path })
         } else if (kind === 'delete') {
           const rel = decodeRel(String(op.path || ''))
@@ -5340,9 +5346,10 @@ async function dispatchUnlocked(ctx, op, args) {
     }
     case 'note.rename': {
       const oldPath = String(args.path || '')
-      const res = renameNoteOnDisk(root, oldPath, args.title)
+      const res = renameNoteOnDisk(root, oldPath, args.title, false)
       replaceNoteOrderPath(manifest, oldPath, res.path)
       syncCaptureNotePath(root, manifest, oldPath, res.path)
+      replaceDiaryLink(root, oldPath, res.path)
       saveManifest(root, manifest)
       return res
     }
