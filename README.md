@@ -5,7 +5,7 @@
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/version-0.2.0-blue?style=flat-square" alt="version 0.2.0">
+  <a href="https://www.npmjs.com/package/@suiji-ai/dsh-agentic-notes"><img src="https://img.shields.io/npm/v/@suiji-ai/dsh-agentic-notes?style=flat-square" alt="npm version"></a>
   <img src="https://img.shields.io/badge/DSH-plugin-5B8DEF?style=flat-square" alt="DSH plugin">
   <img src="https://img.shields.io/badge/storage-local%20Markdown-2EA44F?style=flat-square" alt="local Markdown">
 </p>
@@ -72,6 +72,45 @@ https://github.com/user-attachments/assets/88210769-6088-4a0b-a025-c8265382889f
 浅色模式：
 
 ![随记首页浅色模式](./assets/suiji-home-light.png)
+
+## 安装
+
+随记是 DSH 插件，需要先有 DSH 桌面端或 Web 端。
+
+> 当前为不稳定版本，正在进行逻辑重构，请定期备份笔记。
+
+在 DSH 会话里发送安装指令：
+
+```text
+安装 npm 包：
+请安装这个随记插件：@suiji-ai/dsh-agentic-notes
+
+安装 GitHub 仓库：
+请帮我安装这个随记插件：https://github.com/shallinta/dsh-agentic-notes
+```
+
+装好后左侧栏会出现「随记」入口；如果没有出现，重启 DSH，或者让模型检查插件状态。
+
+## 第一次使用
+
+1. 打开随记，选择一个空目录或已经由随记管理的数据目录。
+2. 在顶部输入框写一句话，按 Enter。
+3. 等右下角出现归档确认，确认执行后点「查看」确认归档位置。
+4. 如果归错，点「修改笔记本」。
+5. 想试 AI 写作，打开一个笔记本，输入一条 `/agent` 指令。
+
+## 斜杠命令
+
+在顶部输入框输入这些命令：
+
+| 命令 | 作用 |
+| --- | --- |
+| `/note 内容` | 等同于直接输入 `内容`；仍会先写日记，再进入归档 |
+| `/memo 内容` | 新建一张便笺 |
+| `/todo 内容` | 新增一条待办 |
+| `/agent 指令` | 让 AI 读取当前页面上下文并操作笔记、待办和便笺 |
+
+`/memo` 和 `/todo` 直接创建便笺、待办；`/note` 和普通输入一样先写日记，再进入归档确认流程。
 
 ## 功能
 
@@ -378,67 +417,6 @@ Token 等同于随记写入权限：
 - 不要发到公开仓库、截图或日志。
 - 怀疑泄露时，在设置页重新生成 Token。
 - 建议只在 `127.0.0.1` 本机使用。
-
-## 安装
-
-随记是 DSH 插件，需要先有 DSH 桌面端或 Web 端。
-
-> 当前为不稳定版本，正在进行逻辑重构，请定期备份笔记。
-
-### 从 npm 安装
-
-随记已经发布到 npm：
-
-```text
-@suiji-ai/dsh-agentic-notes
-```
-
-在 DSH 会话里说：
-
-```text
-请安装这个随记插件：@suiji-ai/dsh-agentic-notes
-```
-
-模型会按当前 DSH 配置安装插件，把它加入 bundle 并启用。
-
-也可以先查看包信息：
-
-```bash
-npm view @suiji-ai/dsh-agentic-notes
-```
-
-不要只在普通 Node 项目里执行 `npm install`。这是 DSH 插件包，需要让 DSH 的插件安装流程接管，才会注册到当前 profile。
-
-### 从 GitHub 安装
-
-直接使用仓库最新代码：
-
-```text
-请帮我安装这个随记插件：https://github.com/shallinta/dsh-agentic-notes
-```
-
-装好后左侧栏会出现「随记」入口；如果没有出现，重启 DSH，或者让模型检查插件状态。
-
-## 第一次使用
-
-1. 打开随记，选择一个空目录或已经由随记管理的数据目录。
-2. 在顶部输入框写一句话，按 Enter。
-3. 等右下角出现归档确认，确认执行后点「查看」确认归档位置。
-4. 如果归错，点「修改笔记本」。
-5. 想试 AI 写作，打开一个笔记本，输入一条 `/agent` 指令。
-
-## 斜杠命令
-
-在顶部输入框输入这些命令：
-
-| 命令 | 作用 |
-| --- | --- |
-| `/note 内容` | 等同于直接输入 `内容`；仍会先写日记，再进入归档 |
-| `/memo 内容` | 新建一张便笺 |
-| `/todo 内容` | 新增一条待办 |
-| `/agent 指令` | 让 AI 读取当前页面上下文并操作笔记、待办和便笺 |
-
-`/memo` 和 `/todo` 直接创建便笺、待办；`/note` 和普通输入一样先写日记，再进入归档确认流程。
 
 ## 数据目录
 
