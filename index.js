@@ -3823,6 +3823,7 @@ function requiresConfirmation(root, operations, prior = {}) {
   return affectedNotes > 1 || deletes > 1 || moves > 1
 }
 
+function isDedupable(op) { return ['todoAdd', 'memoCreate'].includes(op?.op) }
 function taskImpact(root, operations) {
   const stats = { notes: 0, moves: 0 }
   for (const op of operations || []) {
@@ -3832,8 +3833,7 @@ function taskImpact(root, operations) {
   }
   return stats
 }
-function addTaskImpact(job, operations) {
-  const stats = taskImpact(job.root || rootOf(), operations)
+function addTaskImpact(job, stats) {
   job.taskStats = { notes: (job.taskStats?.notes || 0) + stats.notes, moves: (job.taskStats?.moves || 0) + stats.moves }
 }
 
@@ -3848,7 +3848,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   job.staged = staged
   const createdPaths = new Set()
   const stage = (operation) => {
-    if (staged.some((item) => operationKey(item) === operationKey(operation))) return { staged: true, duplicate: true, count: staged.length }
+    if (isDedupable(operation) && staged.some((item) => operationKey(item) === operationKey(operation))) return { staged: true, duplicate: true, count: staged.length }
     if (operation.op === 'create') {
       const desired = `${safeName(operation.notebook || '', '')}/${safeName(operation.title || '新笔记')}.md`
       if (fs.existsSync(absPath(root, desired))) throw new Error(`同名笔记已存在：${desired}`)
@@ -3897,14 +3897,14 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
         createdPaths.add(desired)
       }
       assertAgentScope(context, list, createdPaths)
-      for (const op of dedupeOperations(list)) if (!staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
+      for (const op of list) if (!isDedupable(op) || !staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
       for (const op of list) if (op.op === 'create') createdPaths.add(`${safeName(op.notebook || '', '')}/${safeName(op.title || '新笔记')}.md`)
       return { staged: true, count: staged.length }
     },
     applyOperations: async ({ operations }) => {
       const list = Array.isArray(operations) ? operations : []
       assertAgentScope(context, list, createdPaths)
-      for (const op of dedupeOperations(list)) if (!staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
+      for (const op of list) if (!isDedupable(op) || !staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
       return { staged: true, count: staged.length, note: '操作已暂存，确认后才会落盘' }
     },
     createSurface: async (a) => {
@@ -3982,11 +3982,12 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     job.surfaces = (job.surfaces || []).map((surface) => surface.kind === 'progress' ? { ...surface, status: 'closed' } : surface)
     if (staged.length && !requiresConfirmation(root, staged, job.taskStats)) {
       try {
+        const impact = taskImpact(root, staged)
         const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
         if (!out.errors?.length) job.baselineSignature = stateSignature(root, readManifest(root))
         if (!out.errors?.length) {
           const cleanReply = String(result.text || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim()
-          addTaskImpact(job, staged)
+          addTaskImpact(job, impact)
           job.staged = []
           job.status = 'done'
           job.phase = 'done'
@@ -4370,11 +4371,12 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         assertAgentScope(context, operations, createdPaths)
         const needsConfirm = requiresConfirmation(root, operations, job.taskStats)
         if (tool === 'stage_operations' || transaction || needsConfirm) {
-          for (const op of dedupeOperations(operations)) if (!staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
+          for (const op of operations) if (!isDedupable(op) || !staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
           observation = `已暂存 ${operations.length} 个操作${needsConfirm ? '（需要确认）' : ''}。请立即调用 finish；不要重复调用写工具。`
         } else {
+          const impact = taskImpact(root, operations)
           const out = await applyAgentOperations(root, operations, instruction, job.baselineSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
-          if (!out.errors?.length) { job.baselineSignature = stateSignature(root, readManifest(root)); addTaskImpact(job, operations) }
+          if (!out.errors?.length) { job.baselineSignature = stateSignature(root, readManifest(root)); addTaskImpact(job, impact) }
           applied.push(...(out.applied || []))
           if (out.errors?.length) throw new Error(`部分操作失败：${out.errors.join('；')}`)
           for (const item of out.applied || []) if (item.op === 'create' && item.path) createdPaths.add(item.path)
@@ -4440,10 +4442,11 @@ async function runReactAgent(ctx, root, manifest, args, job) {
   job.surfaces = (job.surfaces || []).map((surface) => surface.kind === 'progress' ? { ...surface, status: 'closed' } : surface)
   if (staged.length && !requiresConfirmation(root, staged, job.taskStats)) {
     try {
+      const impact = taskImpact(root, staged)
       const out = await applyAgentOperations(root, staged, instruction, baseSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
       if (!out.errors?.length) {
         job.baselineSignature = stateSignature(root, readManifest(root))
-        addTaskImpact(job, staged)
+        addTaskImpact(job, impact)
         applied.push(...(out.applied || []))
         staged.length = 0
         job.staged = []
@@ -5421,6 +5424,7 @@ async function dispatchUnlocked(ctx, op, args) {
       let job = jobId ? (agentJobs.get(jobId) || loadAgentSessionByJob(root, jobId)) : null
       let surface = findAgentSurface(refId)
       if (!surface && job) surface = (job.surfaces || []).find((item) => item.id === refId)
+      if (!surface && args.pendingId) { await dispatch(ctx, 'agent.cancel', { id: String(args.pendingId) }); return { ok: true, cancelledPending: String(args.pendingId) } }
       if (!surface) throw new Error('找不到这个提示组件')
       if (!job && surface.jobId) job = agentJobs.get(surface.jobId) || loadAgentSessionByJob(root, surface.jobId)
       surface.status = 'closed'

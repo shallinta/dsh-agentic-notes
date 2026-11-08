@@ -3446,7 +3446,7 @@ window.__ModuleLoader__.load({
         } else if (action.type === 'cancel-job') {
           api('agent.cancelJob', { id: action.jobId || jobId }).catch(() => { })
         } else if (action.type === 'close') {
-          api('surface.close', { jobId, surfaceId: surface.id }).catch(() => { })
+          api('surface.close', { jobId, surfaceId: surface.id, pendingId: surface.pendingId || '' }).catch(() => { })
         } else if (action.type === 'view-note') {
           if (action.path) setView({ kind: 'note', path: action.path })
         } else if (action.type === 'undo-run') {
