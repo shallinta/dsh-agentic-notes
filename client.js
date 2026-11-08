@@ -2886,6 +2886,10 @@ window.__ModuleLoader__.load({
         publishLiveSurfaces(next)
         setSurfacesState(next)
       }
+      const addReviewSurface = (surface) => {
+        if (surface?.root && liveRoot && surface.root !== liveRoot) return
+        setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface])
+      }
       useEffect(() => { saveView(view) }, [view])
       useEffect(() => { saveToasts(toasts) }, [toasts])
       useEffect(() => { saveAgentThread(agentThread) }, [agentThread])
@@ -2940,9 +2944,7 @@ window.__ModuleLoader__.load({
             const pending = (next.captures || []).find((capture) => capture.question)
             if (pending?.question) setSurfaces((prev) => prev.some((item) => item.id === pending.question.id) ? prev : [...prev, { ...pending.question, captureId: pending.id }])
             const review = (next.captures || []).find((capture) => capture.status === 'needs_review' && capture.pendingId)
-            if (review) api('review.surface', { id: review.pendingId }).then(({ surface }) => {
-              setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface])
-            }).catch(() => { })
+            if (review) api('review.surface', { id: review.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch(() => { })
             const active = (next.captures || []).find((capture) => capture.status === 'running' || capture.status === 'pending')
             if (active) {
               setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'capture-progress' && item.kind !== 'capture-launch'), {
@@ -3575,7 +3577,7 @@ window.__ModuleLoader__.load({
             if (status.status === 'done') {
               try { localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }
               const res = status.result || {}
-              if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface])).catch(() => { })
+              if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch(() => { })
               else showAgentResult(res)
             } else if (status.status === 'error') {
               try { localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }
@@ -3665,9 +3667,7 @@ window.__ModuleLoader__.load({
             remove()
             if (status.status === 'done') {
               const res = status.result || {}
-              if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => {
-                setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface])
-              }).catch((err) => pushToast({ title: '审阅准备失败', body: err.message }))
+              if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch((err) => pushToast({ title: '审阅准备失败', body: err.message }))
               else showAgentResult(res, instruction, history)
               return true
             }
