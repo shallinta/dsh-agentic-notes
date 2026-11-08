@@ -2187,9 +2187,11 @@ window.__ModuleLoader__.load({
           h('button', { className: 'dsan-btn danger', onClick: () => setConfirmDelete(true) }, '删除笔记本')) : null)
     }
 
-    function SettingsSection({ title, desc, children }) {
+    function SettingsSection({ title, desc, action, children }) {
       return h('section', { className: 'dsan-set-section' },
-        h('div', { className: 'dsan-set-title' }, title),
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+          h('div', { className: 'dsan-set-title', style: { flex: 1 } }, title),
+          action || null),
         desc ? h('div', { className: 'dsan-set-desc' }, desc) : null,
         children)
     }
@@ -2489,13 +2491,12 @@ window.__ModuleLoader__.load({
           })),
           h('div', { className: 'dsan-set-hint' }, '建议保留 30 天以上，误删后有足够时间恢复。')),
 
-        h(SettingsSection, { title: 'MCP 连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。' },
+        h(SettingsSection, { title: 'MCP 连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。安装 Skill 后，其他 AI 可按说明连接。', action: h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => pushToast({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => pushToast({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill') },
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 8, wordBreak: 'break-all' } }, mcpUrl),
           h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
             h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
-            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => pushToast({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => pushToast({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
         h(SettingsSection, { title: '模型', desc: '用于快捷记录自动归档和 /agent 指令；留空跟随 DSH 默认模型。' },
           h(Field, { label: 'Agent 引擎' }, h('select', { value: agentEngine, onChange: (event) => { const next = event.target.value === 'native' ? 'native' : 'json'; setAgentEngine(next); patchSoon({ agentEngine: next }) } },
