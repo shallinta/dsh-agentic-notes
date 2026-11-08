@@ -23,7 +23,8 @@
     "agent-service.js",
     "mcp-server.js",
     "mcp-core.js",
-    "skills/*"
+    "skills/*",
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
@@ -44,5 +45,21 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shallinta/dsh-agentic-notes.git"
-  }
+  },
+  "license": "MIT",
+  "author": "shallinta",
+  "homepage": "https://github.com/shallinta/dsh-agentic-notes#readme",
+  "bugs": {
+    "url": "https://github.com/shallinta/dsh-agentic-notes/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "notes",
+    "notebook",
+    "diary",
+    "todo",
+    "mcp",
+    "local-first"
+  ]
 }

@@ -79,6 +79,30 @@ https://github.com/user-attachments/assets/88210769-6088-4a0b-a025-c8265382889f
 
 > 当前为不稳定版本，正在进行逻辑重构，请定期备份笔记。
 
+### 通过命令行
+
+```bash
+dsh plugin add @suiji-ai/dsh-agentic-notes
+```
+
+指定 profile：
+
+```bash
+dsh plugin --profile desktop add @suiji-ai/dsh-agentic-notes
+```
+
+### 通过插件市场
+
+安装插件市场：
+
+```bash
+dsh plugin add dshmarket
+```
+
+然后在 DSH 的插件页打开市场，搜索「随记」并安装。随记被目录收录后即可在市场里找到。
+
+### 在 DSH 会话里安装
+
 在 DSH 会话里发送安装指令：
 
 ```text
