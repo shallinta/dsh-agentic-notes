@@ -795,7 +795,20 @@ function replaceDiaryLine(root, docRel, oldLine, newLine) {
   return true
 }
 
-function replaceCaptureLine(root, capture, nextLine) {
+function imageRemovalNote(root, operations) {
+  const lines = []
+  for (const op of operations || []) {
+    if (op.op !== 'write' || !op.path) continue
+    try {
+      const before = localImageRefs(root, op.path, fs.readFileSync(absPath(root, op.path), 'utf8'))
+      const after = localImageRefs(root, op.path, String(op.content || ''))
+      const removed = [...before].filter((image) => !after.has(image))
+      if (removed.length) lines.push(`将移除图片引用：${removed.join('、')}`)
+    } catch { /* ignore */ }
+  }
+  return lines.join('\n')
+}
+function replaceCaptureLine(root, capture, nextLine, nextLink = '') {
   const abs = absPath(root, capture.diaryDoc)
   let text = ''
   try { text = fs.readFileSync(abs, 'utf8') } catch { return false }
@@ -806,9 +819,16 @@ function replaceCaptureLine(root, capture, nextLine) {
   if (needle) idx = lines.findIndex((l) => l.startsWith(prefix) && l.includes(needle))
   if (idx === -1) idx = lines.indexOf(capture.bulletLine)
   if (idx === -1) return false
-  lines[idx] = nextLine
+  let current = lines[idx]
+  if (nextLink && capture.link) {
+    const oldTarget = (String(capture.link).match(/\]\(([^)]+)\)/) || [])[1]
+    const newTarget = (String(nextLink).match(/\]\(([^)]+)\)/) || [])[1]
+    if (oldTarget && newTarget && current.includes(`](${oldTarget})`)) current = current.replace(`](${oldTarget})`, `](${newTarget})`)
+    else current = nextLine
+  } else current = nextLine
+  lines[idx] = current
   fs.writeFileSync(abs, lines.join('\n'))
-  return true
+  return current
 }
 
 function replaceDiaryLink(root, oldRel, newRel) {
@@ -2564,10 +2584,10 @@ function syncCaptureNotePath(root, manifest, oldPath, newPath) {
     const oldLine = String(capture.bulletLine || '')
     const nextLink = captureLink(capture, capture.notebook || oldPath.split('/')[0], newPath)
     const nextLine = `${oldLine.split('  → ')[0]}  → ${nextLink}`
-    replaceCaptureLine(root, capture, nextLine)
+    const applied = replaceCaptureLine(root, capture, nextLine, nextLink)
     capture.noteFile = newPath
     capture.link = nextLink
-    capture.bulletLine = nextLine
+    capture.bulletLine = applied || nextLine
   }
 }
 
@@ -2575,6 +2595,7 @@ function moveSiblingImages(root, fromAbs, toAbs, content, currentNoteRel, imageM
   const fromDir = path.dirname(fromAbs)
   const toDir = path.dirname(toAbs)
   if (path.resolve(fromDir) === path.resolve(toDir)) return content
+  const moved = new Map()
   const moveOne = (rawUrl) => {
     if (/^(https?:|data:|blob:|mailto:|#)/i.test(rawUrl)) return rawUrl
     let url = rawUrl
@@ -2582,6 +2603,7 @@ function moveSiblingImages(root, fromAbs, toAbs, content, currentNoteRel, imageM
     if (path.isAbsolute(url)) return rawUrl
     const source = path.resolve(fromDir, url)
     if (source !== fromDir && !source.startsWith(fromDir + path.sep)) return rawUrl
+    if (moved.has(source)) return encodeURI(path.relative(toDir, moved.get(source)).split(path.sep).join('/'))
     if (!fs.existsSync(source) || !fs.statSync(source).isFile()) return rawUrl
     const relative = path.relative(fromDir, source)
     let target = path.join(toDir, relative)
@@ -2606,6 +2628,7 @@ function moveSiblingImages(root, fromAbs, toAbs, content, currentNoteRel, imageM
           targetHash: fileHash(target),
         })
       }
+      moved.set(source, target)
       return encodeURI(path.relative(toDir, target).split(path.sep).join('/'))
     } catch { return rawUrl }
   }
@@ -4178,7 +4201,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       const id = crypto.randomUUID()
       const pending = {
         id, at: nowIso(), instruction, reply: result.text,
-        brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}`,
+        brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}${imageRemovalNote(root, staged) ? `\n${imageRemovalNote(root, staged)}` : ''}`,
         scale: 'large', summary, signature: job.baselineSignature, operations: staged,
       }
       writeJson(path.join(pendingDir(root), `${id}.json`), pending)
@@ -4633,7 +4656,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
     const summary = summarizeOperations(staged)
     const pending = {
       id, at: nowIso(), instruction, reply,
-      brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}`,
+      brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}${imageRemovalNote(root, staged) ? `\n${imageRemovalNote(root, staged)}` : ''}`,
       scale: 'large', summary,
       signature: job.baselineSignature, operations: staged,
     }

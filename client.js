@@ -1541,7 +1541,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 笔记
 
-    function NoteEditor({ note, onSaved, pushToast, onConflict, onDirty }) {
+    function NoteEditor({ note, onSaved, pushToast, onConflict, onDirty, onRegister }) {
       const [body, setBody] = useState(note.body)
       const [status, setStatus] = useState('已保存')
       const timer = useRef(null)
@@ -1569,6 +1569,8 @@ window.__ModuleLoader__.load({
         if (timer.current) clearTimeout(timer.current)
         timer.current = setTimeout(() => save(value), 800)
       }
+      const flush = useCallback(() => save(latest.current), [save])
+      useEffect(() => { onRegister?.(flush); return () => { onRegister?.(null); if (timer.current) { clearTimeout(timer.current); save(latest.current) } } }, [flush, onRegister])
       useEffect(() => () => { if (timer.current) { clearTimeout(timer.current); save(latest.current) } }, [])
       return h('div', null,
         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
@@ -1817,6 +1819,7 @@ window.__ModuleLoader__.load({
       const [editing, setEditing] = useState(false)
       const [conflict, setConflict] = useState(null)
       const localBody = useRef('')
+      const editorFlush = useRef(null)
       const prevDoc = useRef(doc)
       const captureCount = state.captures?.length || 0
       const reloadDoc = () => api('diary.doc', { doc }).then((data) => { setNote(data); localBody.current = data.body }).catch(() => { })
@@ -1863,13 +1866,13 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'dsan-page dsan-note-page' },
         h('div', { className: 'dsan-note-head' },
           h('h1', { className: 'dsan-note-title' }, date),
-          h('button', { className: 'dsan-btn', onClick: () => { if (editing) reloadDoc(); setEditing((v) => !v) } }, editing ? '读' : '编辑')),
+          h('button', { className: 'dsan-btn', onClick: () => { if (editing) { const pending = editorFlush.current?.(); if (pending?.finally) pending.finally(reloadDoc); else reloadDoc() } setEditing((v) => !v) } }, editing ? '读' : '编辑')),
         conflict ? h('div', { className: 'dsan-conflict' },
           h('span', null, '这个文件被外面的程序改过了。'),
           h('button', { className: 'dsan-btn small', onClick: () => { setConflict(null); api('diary.doc', { doc }).then(setNote) } }, '载入磁盘版本'),
           h('button', { className: 'dsan-btn small primary', onClick: () => { const keep = localBody.current; setConflict(null); api('note.save', { path: doc, content: keep }).then(() => api('diary.doc', { doc }).then((data) => { setNote(data); localBody.current = data.body })) } }, '保留我的')) : null,
         editing
-          ? h(NoteEditor, { note, onSaved: refresh, pushToast, onConflict: setConflict, onDirty: (text) => { localBody.current = text } })
+          ? h(NoteEditor, { note, onSaved: refresh, pushToast, onConflict: setConflict, onRegister: (fn) => { editorFlush.current = fn }, onDirty: (text) => { localBody.current = text } })
           : h(Markdown, { text: note.body, opts }))
     }
 

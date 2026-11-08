@@ -28,7 +28,7 @@ export const nativeAgentToolSchemas = [
   { name: 'set_privacy', description: '开关首页隐私模式。', parameters: object({ enabled: { type: 'boolean' } }, ['enabled']) },
   {
     name: 'stage_operations',
-    description: '暂存一组操作；仅长笔记、批量删除/移动、设置修改需要用户确认。',
+    description: '暂存一组操作；仅长笔记、批量删除/移动需要用户确认。',
     parameters: object({
       operations: {
         type: 'array',
