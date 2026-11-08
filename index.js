@@ -4292,7 +4292,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         observation = '事务模式已开启。写工具现在只暂存，不写盘。'
       } else if (tool === 'commit_transaction') {
         commitReady = true
-        observation = '已标记提交。写工具仍保持暂存，等待用户审阅确认。'
+        observation = '已标记提交。请立即调用 finish；写操作会在用户确认卡中审阅。'
       } else if (tool === 'create_surface') {
         const surfaceOptions = normalizeReactOptions(toolArgs.options)
         const surfaceBody = String(toolArgs.body || toolArgs.question || '').trim()
@@ -4332,7 +4332,8 @@ async function runReactAgent(ctx, root, manifest, args, job) {
           job.updatedAt = nowIso()
         }
         observation = JSON.stringify({ ok: true, surfaceId: surface.id })
-        if (applied.length && !staged.length) observation = '改动已经落盘。请立即调用 finish 汇报结果，不要继续更新进度。'
+        if (staged.length && !applied.length) observation = '操作已暂存，等待用户确认。请立即调用 finish，不要重复更新进度。'
+        else if (applied.length && !staged.length) observation = '改动已经落盘。请立即调用 finish 汇报结果，不要继续更新进度。'
       } else if (tool === 'close_surface') {
         const surface = findAgentSurface(toolArgs.id || toolArgs.surfaceId)
         if (!surface || surface.jobId !== job.id) throw new Error('找不到这个提示组件')
@@ -4370,7 +4371,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         const needsConfirm = requiresConfirmation(root, operations, job.taskStats)
         if (tool === 'stage_operations' || transaction || needsConfirm) {
           for (const op of dedupeOperations(operations)) if (!staged.some((item) => operationKey(item) === operationKey(op))) staged.push(op)
-          observation = `已暂存 ${operations.length} 个操作${needsConfirm ? '（需要确认）' : ''}`
+          observation = `已暂存 ${operations.length} 个操作${needsConfirm ? '（需要确认）' : ''}。请立即调用 finish；不要重复调用写工具。`
         } else {
           const out = await applyAgentOperations(root, operations, instruction, job.baselineSignature, true, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
           if (!out.errors?.length) { job.baselineSignature = stateSignature(root, readManifest(root)); addTaskImpact(job, operations) }
