@@ -4937,7 +4937,7 @@ export function apply(ctx) {
       try {
         const root = rootOf()
         if (!root) throw new Error('还没有选择笔记目录')
-        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.5', commit: pluginCommit() } } })
+        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.3', commit: pluginCommit() } } })
         if (payload.method === 'ping') return send({ jsonrpc: '2.0', id: payload.id, result: {} })
         if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: [...mcpTools, ...MCP_WRITE_TOOLS] } })
         if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: await callHttpMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
