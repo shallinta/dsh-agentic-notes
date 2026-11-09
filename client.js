@@ -867,14 +867,14 @@ window.__ModuleLoader__.load({
         h('path', { fill: 'currentColor', d: 'M 146 880 C 160 745 178 658 190 552 C 216 309 255 260 463 230 C 591 211 755 192 855 190 C 981 184 1052 230 1036 381 C 1026 484 1001 523 962 557 C 946 571 930 567 934 542 C 940 486 950 423 954 378 C 961 311 938 296 870 298 C 752 300 559 328 431 359 C 343 380 330 408 308 515 C 286 617 270 717 259 805 C 240 937 255 992 436 980 C 550 973 718 965 813 949 C 942 930 944 897 993 679 C 930 731 845 787 767 812 C 687 841 637 827 614 785 C 589 736 619 693 650 629 C 671 586 597 628 573 642 C 498 684 451 730 414 772 C 387 804 350 785 364 742 C 391 671 506 586 580 548 C 667 502 728 494 759 527 C 809 578 753 662 726 708 C 705 746 746 742 796 713 C 894 657 951 612 1002 556 C 1036 517 1077 504 1100 533 C 1118 554 1117 578 1107 614 C 1085 693 1087 762 1072 852 C 1047 1013 996 1043 808 1057 C 632 1064 528 1076 416 1088 C 298 1102 213 1093 166 1008 C 146 971 141 926 146 880 Z' }))
     }
 
-    function ChatIcon({ size = 17 }) {
-      return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    function ChatIcon({ size = 17, strokeWidth = 1.8 }) {
+      return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
         h('path', { d: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 9.5 9.5 0 0 1-3.2-.6L3 21l1.7-4.8A8.4 8.4 0 1 1 21 11.5z' }),
         h('path', { d: 'M8 10h8M8 14h5' }))
     }
 
-    function GearIcon({ size = 14 }) {
-      return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    function GearIcon({ size = 14, strokeWidth = 1.8 }) {
+      return h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
         h('circle', { cx: 12, cy: 12, r: 3.1 }),
         h('path', { d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z' }))
     }
@@ -3996,7 +3996,7 @@ window.__ModuleLoader__.load({
         else go({ kind: 'home' })
       }
 
-      const gear = h(GearIcon, { size: 18 })
+      const gear = h(GearIcon, { size: 14, strokeWidth: 2.4 })
 
       const stickyTransparencyValue = Number.isFinite(Number(state.settings?.stickyTransparency))
         ? Number(state.settings.stickyTransparency)
@@ -4017,11 +4017,11 @@ window.__ModuleLoader__.load({
           state.settings?.showAgentSessions === true ? h('button', {
             className: 'dsan-btn ghost dsan-icon-btn', title: 'agent 会话', 'aria-label': 'agent 会话',
             onClick: openAgentSessions,
-          }, h(ChatIcon, { size: 18 })) : null,
+          }, h(ChatIcon, { size: 19, strokeWidth: 1.7 })) : null,
           h('button', {
             className: 'dsan-btn ghost dsan-icon-btn', title: '重新加载插件页面', 'aria-label': '重新加载插件页面',
             onClick: () => onReload?.(),
-          }, h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+          }, h('svg', { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
             h('path', { d: 'M21 12a9 9 0 1 1-2.64-6.36' }),
             h('path', { d: 'M21 3v6h-6' }))),
           h('button', { className: 'dsan-btn ghost dsan-icon-btn', title: '设置', 'aria-label': '设置', onClick: () => setSettings(true) }, gear)),
