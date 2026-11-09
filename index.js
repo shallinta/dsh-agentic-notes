@@ -518,7 +518,7 @@ function rootOf() {
 function manifestPath(root) { return path.join(root, MANIFEST) }
 
 function emptyManifest() {
-  return { version: 1, createdAt: nowIso(), notebooks: [], stickies: [], captures: [], homeBackground: '', diaryCover: '', noteOrder: {}, ui: { fabTop: null, todoHideDone: false, privacyMode: false, captureHistory: [] } }
+  return { version: 1, createdAt: nowIso(), notebooks: [], stickies: [], captures: [], homeBackground: '', diaryCover: '', noteOrder: {}, ui: { fabTop: null, fabBottom: null, todoHideDone: false, privacyMode: false, captureHistory: [] } }
 }
 
 function uniqueStickies(list) {
@@ -549,12 +549,13 @@ function readManifest(root) {
     diaryCover: typeof data.diaryCover === 'string' ? data.diaryCover : '',
     noteOrder: data.noteOrder && typeof data.noteOrder === 'object' ? data.noteOrder : {},
     ui: data.ui && typeof data.ui === 'object' ? {
-      fabTop: Number.isFinite(Number(data.ui.fabTop)) ? Number(data.ui.fabTop) : null,
+      fabTop: Number(data.ui.fabTop) > 0 && Number.isFinite(Number(data.ui.fabTop)) ? Number(data.ui.fabTop) : null,
+      fabBottom: Number(data.ui.fabBottom) > 0 && Number.isFinite(Number(data.ui.fabBottom)) ? Number(data.ui.fabBottom) : null,
       todoHideDone: data.ui.todoHideDone === true,
       privacyMode: data.ui.privacyMode === true,
       captureHistory: Array.isArray(data.ui.captureHistory) ? data.ui.captureHistory.map(String).slice(0, 50) : [],
       notifications: Array.isArray(data.ui.notifications) ? data.ui.notifications.slice(-50) : [],
-    } : { fabTop: null, todoHideDone: false, privacyMode: false, captureHistory: [] },
+    } : { fabTop: null, fabBottom: null, todoHideDone: false, privacyMode: false, captureHistory: [] },
   }
 }
 
@@ -2153,7 +2154,7 @@ function buildState(root) {
     })(),
     homeBackground: manifest.homeBackground || '',
     diaryCover: manifest.diaryCover || '',
-    ui: manifest.ui || { fabTop: null, todoHideDone: false, privacyMode: false, captureHistory: [] },
+    ui: manifest.ui || { fabTop: null, fabBottom: null, todoHideDone: false, privacyMode: false, captureHistory: [] },
     captures: manifest.captures.slice(-120),
     serverTime: nowIso(),
   }
@@ -4936,7 +4937,7 @@ export function apply(ctx) {
       try {
         const root = rootOf()
         if (!root) throw new Error('还没有选择笔记目录')
-        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.2', commit: pluginCommit() } } })
+        if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.3', commit: pluginCommit() } } })
         if (payload.method === 'ping') return send({ jsonrpc: '2.0', id: payload.id, result: {} })
         if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: [...mcpTools, ...MCP_WRITE_TOOLS] } })
         if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: await callHttpMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
@@ -5384,9 +5385,10 @@ async function dispatchUnlocked(ctx, op, args) {
       return handleCapture(ctx, root, manifest, args)
     }
     case 'ui.save': {
-      const current = manifest.ui || { fabTop: null, todoHideDone: false, captureHistory: [] }
+      const current = manifest.ui || { fabTop: null, fabBottom: null, todoHideDone: false, captureHistory: [] }
       const next = { ...current }
-      if (Number.isFinite(Number(args.fabTop))) next.fabTop = Number(args.fabTop)
+      if (Number(args.fabTop) > 0 && Number.isFinite(Number(args.fabTop))) next.fabTop = Number(args.fabTop)
+      if (Number(args.fabBottom) > 0 && Number.isFinite(Number(args.fabBottom))) next.fabBottom = Number(args.fabBottom)
       if (typeof args.todoHideDone === 'boolean') next.todoHideDone = args.todoHideDone
       if (typeof args.privacyMode === 'boolean') next.privacyMode = args.privacyMode
       if (Array.isArray(args.captureHistory)) next.captureHistory = args.captureHistory.map(String).slice(0, 50)
@@ -5778,7 +5780,7 @@ async function dispatchUnlocked(ctx, op, args) {
       } catch (err) {
         const failed = readManifest(root)
         failed.ui = {
-          ...(failed.ui || { fabTop: null, todoHideDone: false, captureHistory: [] }),
+          ...(failed.ui || { fabTop: null, fabBottom: null, todoHideDone: false, captureHistory: [] }),
           lastAgentError: String(err?.message ?? err),
           lastAgentAt: nowIso(),
         }
@@ -5986,4 +5988,4 @@ async function dispatchUnlocked(ctx, op, args) {
   }
 }
 
-export { applyAgentOperations, undoAgentRun, callHttpMcpTool, assertPublicUrl, fetchWebText };
+export { applyAgentOperations, undoAgentRun, callHttpMcpTool, assertPublicUrl, fetchWebText, readManifest };

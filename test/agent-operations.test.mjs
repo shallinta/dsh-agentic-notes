@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { applyAgentOperations } from '../index.js'
+import { applyAgentOperations, readManifest } from '../index.js'
 
 function tempRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsan-ops-'))
@@ -426,5 +426,20 @@ test('duplicate image references are rewritten to the moved image', async () => 
   const text = fs.readFileSync(path.join(root, 'B', 'a.md'), 'utf8')
   assert.equal((text.match(/\(img\.png\)/g) || []).length, 2)
   assert.equal(fs.existsSync(path.join(root, 'B', 'img.png')), true)
+  fs.rmSync(root, { recursive: true, force: true })
+})
+
+test('fab position null is not coerced to zero', async () => {
+  const root = tempRoot()
+  const file = path.join(root, '.dsh-notebooks.json')
+  const manifest = JSON.parse(fs.readFileSync(file, 'utf8'))
+  manifest.ui = { fabTop: null, fabBottom: null }
+  fs.writeFileSync(file, JSON.stringify(manifest))
+  assert.equal(readManifest(root).ui.fabTop, null)
+  assert.equal(readManifest(root).ui.fabBottom, null)
+  manifest.ui = { fabTop: 0, fabBottom: 0 }
+  fs.writeFileSync(file, JSON.stringify(manifest))
+  assert.equal(readManifest(root).ui.fabTop, null)
+  assert.equal(readManifest(root).ui.fabBottom, null)
   fs.rmSync(root, { recursive: true, force: true })
 })

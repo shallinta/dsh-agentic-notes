@@ -406,8 +406,8 @@ window.__ModuleLoader__.load({
         }
       } catch { /* ignore */ }
       try {
-        const saved = Number.parseInt(localStorage.getItem('dsan.fab.top.v2') || '', 10)
-        if (Number.isFinite(saved)) out.fabTop = saved
+        const saved = Number.parseInt(localStorage.getItem('dsan.fab.bottom.v2') || '', 10)
+        if (Number.isFinite(saved) && saved > 0) out.fabBottom = saved
       } catch { /* ignore */ }
       return out
     }
@@ -2349,7 +2349,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsan-settings-avatar-shell' },
             h('div', { className: 'dsan-settings-avatar-wrap' },
               h('img', { className: 'dsan-settings-avatar', src: pluginAsset('suiji-logo.webp'), alt: '随记 logo' })),
-            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.2.2'))),
+            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.2.3'))),
         h(SettingsSection, { title: '笔记库', desc: '所有笔记、日记、便笺和提醒都存在这个目录里。' },
           h('div', { className: 'dsan-set-row' },
             h('div', { style: { fontSize: 12, lineHeight: 1.6, wordBreak: 'break-all', marginBottom: 8 } }, `当前目录：${root}`),
@@ -3023,9 +3023,9 @@ window.__ModuleLoader__.load({
       const [contentNonce, setContentNonce] = useState(0)
       const [hiddenStickies, setHiddenStickies] = useState([])
       const bumpContent = () => setContentNonce((n) => n + 1)
-      const [fabTop, setFabTop] = useState(() => {
-        if (Number.isFinite(legacyUi.fabTop)) return legacyUi.fabTop
-        return typeof window !== 'undefined' ? Math.round((window.innerHeight || 800) * 0.75) : 560
+      const [fabBottom, setFabBottom] = useState(() => {
+        if (Number.isFinite(legacyUi.fabBottom)) return legacyUi.fabBottom
+        return typeof window !== 'undefined' ? Math.round((window.innerHeight || 800) * 0.2) : 160
       })
       const uiHydrated = useRef(false)
       const fabDrag = useRef(null)
@@ -3226,8 +3226,18 @@ window.__ModuleLoader__.load({
         uiHydrated.current = true
         const ui = state.ui || {}
         const patch = {}
-        if (Number.isFinite(ui.fabTop)) setFabTop(ui.fabTop)
-        else if (Number.isFinite(legacyUi.fabTop)) patch.fabTop = legacyUi.fabTop
+        const viewportHeight = (typeof window !== 'undefined' ? window.innerHeight : 800) || 800
+        const maxBottom = Math.max(70, viewportHeight - 80)
+        const clampBottom = (value) => Math.round(Math.max(70, Math.min(maxBottom, Number(value))))
+        if (Number.isFinite(ui.fabBottom) && ui.fabBottom > 0) setFabBottom(clampBottom(ui.fabBottom))
+        else if (Number.isFinite(legacyUi.fabBottom)) {
+          setFabBottom(clampBottom(legacyUi.fabBottom))
+          patch.fabBottom = clampBottom(legacyUi.fabBottom)
+        } else if (Number.isFinite(ui.fabTop) && ui.fabTop > 0) {
+          const migrated = clampBottom(viewportHeight - ui.fabTop)
+          setFabBottom(migrated)
+          patch.fabBottom = migrated
+        }
         if (ui.todoHideDone === true) setTodoHideDone(true)
         if (ui.privacyMode === true) setPrivacyMode(true)
         else if (legacyUi.todoHideDone === true) { setTodoHideDone(true); patch.todoHideDone = true }
@@ -3867,7 +3877,7 @@ window.__ModuleLoader__.load({
       }
 
       const fabDown = (event) => {
-        fabDrag.current = { startY: event.clientY, startTop: fabTop }
+        fabDrag.current = { startY: event.clientY, startBottom: fabBottom, nextBottom: fabBottom }
         fabMoved.current = false
         event.currentTarget.setPointerCapture?.(event.pointerId)
       }
@@ -3875,12 +3885,15 @@ window.__ModuleLoader__.load({
         if (!fabDrag.current) return
         const dy = event.clientY - fabDrag.current.startY
         if (Math.abs(dy) > 4) fabMoved.current = true
-        const next = Math.max(70, Math.min((window.innerHeight || 800) - 80, fabDrag.current.startTop + dy))
-        setFabTop(next)
+        const next = Math.max(70, Math.min((window.innerHeight || 800) - 80, fabDrag.current.startBottom - dy))
+        fabDrag.current.nextBottom = next
+        setFabBottom(next)
       }
       const fabUp = () => {
+        const drag = fabDrag.current
         fabDrag.current = null
-        api('ui.save', { fabTop: Math.round(fabTop) }).catch(() => { })
+        if (!fabMoved.current) return
+        api('ui.save', { fabBottom: Math.round(drag?.nextBottom ?? fabBottom) }).catch(() => { })
       }
 
       const createPageSticky = async () => {
@@ -4099,7 +4112,7 @@ window.__ModuleLoader__.load({
             },
           })) : null,
         (view.kind === 'home' || (!floatingSticky && !pageMinSticky)) ? h('button', {
-          className: 'dsan-fab', title: '新建便笺（可上下拖动）', style: { top: `${fabTop}px` },
+          className: 'dsan-fab', title: '新建便笺（可上下拖动）', style: { bottom: `${fabBottom}px` },
           onPointerDown: fabDown, onPointerMove: fabMove, onPointerUp: fabUp,
           onClick: () => {
             if (fabMoved.current) { fabMoved.current = false; return }
@@ -4108,7 +4121,7 @@ window.__ModuleLoader__.load({
           },
         }, '＋ 便笺') : null,
         (view.kind !== 'home' && !floatingSticky && pageMinSticky) ? h('button', {
-          className: 'dsan-fab dsan-fab-min', title: '展开便笺（可上下拖动）', style: { top: `${fabTop}px` },
+          className: 'dsan-fab dsan-fab-min', title: '展开便笺（可上下拖动）', style: { bottom: `${fabBottom}px` },
           onPointerDown: fabDown, onPointerMove: fabMove, onPointerUp: fabUp,
           onClick: async () => {
             if (fabMoved.current) { fabMoved.current = false; return }
