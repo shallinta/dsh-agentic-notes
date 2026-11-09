@@ -503,6 +503,10 @@ Token 等同于随记写入权限：
 
 如果对你有帮助，可以请我喝杯咖啡，感谢支持~
 
+### 随记系列
+
+如果你也想要一个把单词做成卡片、带插图和发音的本地工具，可以看看同系列的「随记单词本」：[@suiji-ai/dsh-agentic-word-book](https://github.com/shallinta/dsh-agentic-word-book)。
+
 <table>
   <tr>
     <td align="center"><strong>微信</strong></td>
