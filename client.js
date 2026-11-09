@@ -2362,7 +2362,7 @@ window.__ModuleLoader__.load({
       const modelOptions = models.slice()
       if (model && !modelOptions.some((item) => item.id === model)) modelOptions.unshift({ id: model, name: model })
       return h(Modal, {
-        title: '随记设置', onClose: closeSettings,
+        title: h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 8 } }, h(Icon, { size: 18 }), '随记设置'), onClose: closeSettings,
       },
         h('div', { className: 'dsan-settings-hero' },
           h('div', { className: 'dsan-settings-avatar-shell' },

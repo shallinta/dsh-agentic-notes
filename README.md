@@ -499,13 +499,13 @@ Token 等同于随记写入权限：
 - 不要同时用随记和外部编辑器修改同一篇笔记，否则可能发生版本冲突。
 - `/agent` 从一条指令开始，默认使用当前页面上下文。完成卡支持「回复」，方案卡支持选项按钮；未完成的会话可以继续。
 
+## 随记系列
+
+如果你也想要一个把单词做成卡片、带插图和发音的本地工具，可以看看同系列的「随记单词本」：[@suiji-ai/dsh-agentic-word-book](https://github.com/shallinta/dsh-agentic-word-book)。
+
 ## 支持随记
 
 如果对你有帮助，可以请我喝杯咖啡，感谢支持~
-
-### 随记系列
-
-如果你也想要一个把单词做成卡片、带插图和发音的本地工具，可以看看同系列的「随记单词本」：[@suiji-ai/dsh-agentic-word-book](https://github.com/shallinta/dsh-agentic-word-book)。
 
 <table>
   <tr>
