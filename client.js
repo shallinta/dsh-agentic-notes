@@ -102,7 +102,8 @@ window.__ModuleLoader__.load({
 .dsan-btn.ghost{border-color:transparent}
 .dsan-btn.small{height:24px;padding:0 8px;font-size:12px;border-radius:6px}
 .dsan-btn:disabled{opacity:.5;cursor:default}
-.dsan-icon-btn{width:30px;height:30px;padding:0;justify-content:center}
+.dsan-icon-btn{width:30px;height:30px;padding:0;justify-content:center;line-height:1}
+.dsan-icon-btn svg{display:block;flex:none}
 .dsan-crumb{display:flex;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary);font-size:12px;min-width:0}
 .dsan-crumb a{color:inherit;cursor:pointer;text-decoration:none}
 .dsan-crumb a:hover{color:var(--dsw-alias-label-primary)}
@@ -2349,7 +2350,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsan-settings-avatar-shell' },
             h('div', { className: 'dsan-settings-avatar-wrap' },
               h('img', { className: 'dsan-settings-avatar', src: pluginAsset('suiji-logo.webp'), alt: '随记 logo' })),
-            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.2.3'))),
+            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.2.4'))),
         h(SettingsSection, { title: '笔记库', desc: '所有笔记、日记、便笺和提醒都存在这个目录里。' },
           h('div', { className: 'dsan-set-row' },
             h('div', { style: { fontSize: 12, lineHeight: 1.6, wordBreak: 'break-all', marginBottom: 8 } }, `当前目录：${root}`),
@@ -3995,7 +3996,7 @@ window.__ModuleLoader__.load({
         else go({ kind: 'home' })
       }
 
-      const gear = h(GearIcon, { size: 17 })
+      const gear = h(GearIcon, { size: 18 })
 
       const stickyTransparencyValue = Number.isFinite(Number(state.settings?.stickyTransparency))
         ? Number(state.settings.stickyTransparency)
@@ -4016,11 +4017,11 @@ window.__ModuleLoader__.load({
           state.settings?.showAgentSessions === true ? h('button', {
             className: 'dsan-btn ghost dsan-icon-btn', title: 'agent 会话', 'aria-label': 'agent 会话',
             onClick: openAgentSessions,
-          }, h(ChatIcon)) : null,
+          }, h(ChatIcon, { size: 18 })) : null,
           h('button', {
             className: 'dsan-btn ghost dsan-icon-btn', title: '重新加载插件页面', 'aria-label': '重新加载插件页面',
             onClick: () => onReload?.(),
-          }, h('svg', { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+          }, h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
             h('path', { d: 'M21 12a9 9 0 1 1-2.64-6.36' }),
             h('path', { d: 'M21 3v6h-6' }))),
           h('button', { className: 'dsan-btn ghost dsan-icon-btn', title: '设置', 'aria-label': '设置', onClick: () => setSettings(true) }, gear)),
