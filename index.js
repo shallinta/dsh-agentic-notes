@@ -33,6 +33,7 @@ const IMG_PATH = '/dsh-agentic-notes/img'
 const MCP_PATH = '/dsh-agentic-notes/mcp'
 const SOUND_PATH = '/dsh-agentic-notes/sound'
 const ASSET_PATH = '/dsh-agentic-notes/asset'
+const SERIES_WORK_DIR = path.join(os.homedir(), 'Documents', 'deepseek-harness', 'suiji-ai')
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
 const DEFAULT_SOUND = path.join(PLUGIN_DIR, 'assets', 'reminder-default.ogg')
 const DIARY_DIR = '日记'
@@ -561,6 +562,13 @@ function readManifest(root) {
 
 function saveManifest(root, manifest) {
   writeJson(manifestPath(root), manifest)
+}
+
+async function ensureSeriesWorkspace(ctx, workDir) {
+  fs.mkdirSync(workDir, { recursive: true })
+  const registry = ctx.get('workspaceRegistry')
+  if (!registry || typeof registry.create !== 'function') return undefined
+  return registry.create(workDir, '随记')
 }
 
 function ensureStructure(root) {
@@ -5383,6 +5391,24 @@ async function dispatchUnlocked(ctx, op, args) {
       return { path: saveUploadImage(root, args.dataUrl) }
     case 'capture': {
       return handleCapture(ctx, root, manifest, args)
+    }
+    case 'series.installWordBook': {
+      const controller = ctx.get('sessionController')
+      if (!controller || typeof controller.create !== 'function') throw new Error('session controller unavailable')
+      const workDir = SERIES_WORK_DIR
+      const ws = await ensureSeriesWorkspace(ctx, workDir)
+      const created = await controller.create(ws ? { workspaceId: ws.id } : { cwd: workDir })
+      const message = '请询问用户是否安装「随记单词本」插件，用户同意后，安装这个插件：@suiji-ai/dsh-agentic-word-book。' +
+        '如果用户希望了解这个插件，可以打开 github 地址：https://github.com/shallinta/dsh-agentic-word-book'
+      if (typeof controller.prompt === 'function') {
+        await controller.prompt({
+          requestId: 'suiji-word-book-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+          sessionId: created.sessionId,
+          mode: 'queue',
+          content: [{ type: 'text', text: message }],
+        }, new AbortController().signal)
+      }
+      return { ok: true, sessionId: created.sessionId, workspaceId: ws ? String(ws.id) : '', workDir }
     }
     case 'ui.save': {
       const current = manifest.ui || { fabTop: null, fabBottom: null, todoHideDone: false, captureHistory: [] }

@@ -2244,6 +2244,24 @@ window.__ModuleLoader__.load({
       const [provider, setProvider] = useState(state.settings?.model?.provider || '')
       const [model, setModel] = useState(state.settings?.model?.model || '')
       const [root, setRoot] = useState(state.root)
+      const [wordBookState, setWordBookState] = useState('')
+      const openSeriesSession = (res) => {
+        if (!res?.sessionId) return
+        const svc = ctx?.get?.('uiWorkspace')
+        if (!svc?.openSession) { setWordBookState('会话已创建，可在左侧工作区打开'); return }
+        setTimeout(() => {
+          try { svc.openSession(res.sessionId) } catch { setWordBookState('会话已创建，可在左侧工作区打开') }
+        }, 500)
+      }
+      const installWordBook = () => {
+        setWordBookState('正在创建会话…')
+        api('series.installWordBook').then((res) => {
+          if (!res?.sessionId) throw new Error(res?.error || '没能创建会话')
+          setWordBookState('会话已创建，正在打开…')
+          openSeriesSession(res)
+        }).catch((err) => setWordBookState(err.message || '安装会话创建失败'))
+      }
+
       const [background, setBackground] = useState(state.homeBackground || '')
       const [cropFile, setCropFile] = useState(null)
       const configTimer = useRef(null)
@@ -2594,7 +2612,23 @@ window.__ModuleLoader__.load({
               h('img', {
                 src: pluginAsset('donate-alipay.webp'), alt: '支付宝收款码',
                 style: { width: 170, height: 170, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l1)', background: '#fff', display: 'block' },
-              }))))
+              })),
+            ),
+          h('div', { style: { marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--dsw-alias-border-l1)' } },
+            h('div', { style: { fontSize: 13, fontWeight: 600, marginBottom: 5 } }, '随记系列推荐'),
+            h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } },
+              h('b', null, '「随记单词本」'),
+              '：把想记的单词做成带插图、发音和例句的卡片。和随记一样，数据存在本地，适合每天翻一翻。'),
+            h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
+              h('button', {
+                type: 'button', className: 'dsan-btn small',
+                onClick: () => { try { window.open('https://github.com/shallinta/dsh-agentic-word-book', '_blank', 'noopener') } catch { /* ignore */ } },
+              }, '去 GitHub 看看'),
+              h('button', {
+                type: 'button', className: 'dsan-btn small primary',
+                onClick: installWordBook,
+              }, '一键安装「随记单词本」')),
+            wordBookState ? h('div', { className: 'dsan-set-hint', style: { marginTop: 8 } }, wordBookState) : null))
       )
     }
 
