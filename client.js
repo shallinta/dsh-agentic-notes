@@ -3158,6 +3158,12 @@ window.__ModuleLoader__.load({
         return () => liveSurfaceListeners.delete(listener)
       }, [])
       const agentJobRef = useRef('')
+      useEffect(() => {
+        try {
+          const saved = localStorage.getItem('dsan-active-agent-job')
+          if (saved) agentJobRef.current = saved
+        } catch { /* ignore */ }
+      }, [])
       const surfaceResolvers = useRef(new Map())
       const agentPollers = useRef(new Map())
       const appMountedRef = useRef(true)
@@ -3618,7 +3624,7 @@ window.__ModuleLoader__.load({
             if (action.type === 'confirm') showAgentResult(res.outcome || res)
           }).catch((err) => pushToast({ title: '确认失败', body: err.message }))
         } else if (action.type === 'session-option' || action.type === 'session-text') {
-          executeAgent(action.text || answer.label || '', currentContext(), [], agentThread?.history || [], agentJobRef.current)
+          executeAgent(action.text || answer.label || '', currentContext(), [], agentThread?.history || [], surface.waitingJob || surface.jobId || agentJobRef.current)
         } else if (action.type === 'open-reply') {
           setAgentReplyOpen(true)
         } else if (action.type === 'cancel-job') {
@@ -3661,12 +3667,12 @@ window.__ModuleLoader__.load({
             else if (surface.onSurfaceAction) surface.onSurfaceAction(answer.optionId)
             else if (surface.captureId) api('capture.answer', { id: surface.captureId, questionId: surface.id, ...answer }).catch(() => { })
             else if (surface.waitingJob) api('surface.answer', { id: surface.waitingJob, questionId: surface.id, ...answer }).then(() => { if (agentJobRef.current !== surface.waitingJob) pollAgentJob(surface.waitingJob) }).catch(() => { })
-            else if (surface.fromJob && answer.label) executeAgent(answer.label, currentContext(), [], agentThread?.history || [])
+            else if (surface.fromJob && answer.label) executeAgent(answer.label, currentContext(), [], agentThread?.history || [], surface.waitingJob || surface.jobId || agentJobRef.current)
             else surfaceResolvers.current.get(surface.id)?.(answer)
           },
         })
 
-      const showAgentResult = (res, instruction = '', baseHistory = null) => {
+      const showAgentResult = (res, instruction = '', baseHistory = null, jobId = '') => {
         const first = (res.applied || []).find((item) => item.path && !['delete', 'deleteNotebook', 'reorderNotebooks', 'reorderNotes', 'todoAdd', 'todoUpdate', 'todoDelete', 'memoCreate', 'memoUpdate', 'memoDelete', 'memoPin', 'settingsUpdate', 'setNotebookPrivate', 'setPrivacyMode', 'fileMove', 'fileCopy', 'fileDelete'].includes(item.op))
         const options = Array.isArray(res.options) ? res.options.slice(0, 6) : []
         const reply = String(res.reply || res.question || '')
@@ -3694,13 +3700,13 @@ window.__ModuleLoader__.load({
             ? `${reply}\n选项：${options.map((option) => `${option.id || ''} ${option.label}`).join('；')}`
             : reply
           nextHistory.push({ role: 'assistant', content: assistantText })
-          setAgentThread({ instruction: instruction || agentThread?.instruction || '', reply, history: nextHistory.slice(-8) })
+          setAgentThread({ instruction: instruction || agentThread?.instruction || '', reply, history: nextHistory.slice(-8), jobId: jobId || agentThread?.jobId || '' })
         }
         options.forEach((option) => {
           actions.push({
             label: option.label,
             title: option.description || option.label,
-            onClick: () => executeAgent(`${option.id || ''}. ${option.label}`.trim(), currentContext(), [], nextHistory, agentJobRef.current),
+            onClick: () => executeAgent(`${option.id || ''}. ${option.label}`.trim(), currentContext(), [], nextHistory, jobId || agentJobRef.current),
           })
         })
         if (reply) actions.push({ label: '回复', onClick: () => setAgentReplyOpen(true) })
@@ -3713,6 +3719,7 @@ window.__ModuleLoader__.load({
           id: `agent-result-${Date.now()}`,
           key: 'agent-result',
           kind: 'agent-result',
+          jobId: jobId || agentJobRef.current,
           type: 'toast',
           expiresAt: Date.now() + 10 * 60 * 1000,
           title: 'agent 处理完成',
@@ -3852,7 +3859,7 @@ window.__ModuleLoader__.load({
             if (status.status === 'done') {
               const res = status.result || {}
               if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch((err) => pushToast({ title: '审阅准备失败', body: err.message }))
-              else showAgentResult(res, instruction, history)
+              else showAgentResult(res, instruction, history, jobId)
               return true
             }
             if (status.status === 'cancelled') {
@@ -4361,7 +4368,7 @@ window.__ModuleLoader__.load({
           onClose: () => setAgentReplyOpen(false),
           onSend: (text) => {
             setAgentReplyOpen(false)
-            executeAgent(text, currentContext(), [], agentThread?.history || [], agentJobRef.current)
+            executeAgent(text, currentContext(), [], agentThread?.history || [], agentThread?.jobId || agentJobRef.current)
           },
         }) : null,
         agentSessionOpen ? h(Modal, { title: 'agent 会话', wide: true, onClose: () => setAgentSessionOpen(false) },
@@ -4375,17 +4382,26 @@ window.__ModuleLoader__.load({
                 h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
                   h('div', { style: { fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 } }, fmtReminderTime(session.updatedAt) || '未知时间'),
                   h('span', { title: session.status || 'unknown', style: { width: 7, height: 7, borderRadius: '50%', flex: 'none', background: session.status === 'done' ? '#3fb950' : session.status === 'running' ? '#58a6ff' : session.status === 'waiting' ? '#d29922' : session.status === 'error' ? '#f85149' : '#8b949e' } })),
-                h('div', { style: { fontSize: 10, opacity: .45, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, String(session.title || '未命名会话').split(/\r?\n/)[0].replace(/^\/agent\s*/, '').trim() || '未命名会话'))) : [h('div', { className: 'dsan-set-hint' }, '还没有 agent 会话')])),
+                h('div', { style: { fontSize: 10, opacity: .45, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, String(session.title || '未命名会话').split(/\r?\n/)[0].replace(/^\/agent\s*/, '').trim() || '未命名会话'),
+                session.preview ? h('div', { style: { fontSize: 10, opacity: .62, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, session.preview) : null)) : [h('div', { className: 'dsan-set-hint' }, '还没有 agent 会话')])),
             h('div', { style: { flex: 1, overflow: 'auto', maxHeight: 'calc(62vh / var(--dsan-zoom, 1))' } },
               agentSessionDetail ? [
                 h('div', { style: { fontWeight: 600, marginBottom: 8 } }, agentSessionDetail.args?.instruction || 'agent 会话'),
                 h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, `状态：${agentSessionDetail.status || ''} · 更新：${String(agentSessionDetail.updatedAt || '').slice(0, 19).replace('T', ' ')}`),
-                ...(agentSessionDetail.turns || []).map((turn, index) => h('div', { key: turn.id || index, style: { borderTop: '1px solid var(--dsw-alias-border-l2)', padding: '10px 0' } },
-                  h('div', { style: { fontSize: 12, opacity: .65 } }, `第 ${index + 1} 轮 · ${turn.status || ''}`),
-                  h('div', { style: { marginTop: 4, whiteSpace: 'pre-wrap' } }, turn.input || ''),
-                  turn.question ? h('div', { className: 'dsan-set-hint', style: { marginTop: 6, whiteSpace: 'pre-wrap' } }, `提问：${turn.question}`) : null,
-                  turn.answer?.label ? h('div', { className: 'dsan-set-hint', style: { marginTop: 4 } }, `回答：${turn.answer.label}`) : null,
-                  turn.reply ? h('div', { style: { marginTop: 6, whiteSpace: 'pre-wrap' } }, turn.reply) : null)),
+                ...(agentSessionDetail.turns || []).map((turn, index) => h('div', { key: turn.id || index, style: { borderTop: '1px solid var(--dsw-alias-border-l2)', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 6 } },
+                  h('div', { style: { fontSize: 11, opacity: .5 } }, `第 ${index + 1} 轮 · ${turn.status || ''}${turn.endedAt ? ` · ${fmtReminderTime(turn.endedAt) || ''}` : ''}`),
+                  h('div', { style: { whiteSpace: 'pre-wrap' } }, h('b', { style: { color: 'var(--dsw-alias-label-secondary)', marginRight: 6 } }, '你'), turn.input || ''),
+                  turn.question ? h('div', { style: { whiteSpace: 'pre-wrap' } },
+                    h('b', { style: { color: 'var(--dsw-alias-brand-primary)', marginRight: 6 } }, '助手'),
+                    typeof turn.question === 'string' ? turn.question : String(turn.question?.text || turn.question?.question || ''),
+                    Array.isArray(turn.options) && turn.options.length
+                      ? h('div', { style: { fontSize: 11, opacity: .6, marginTop: 2 } }, `选项：${turn.options.map((option) => option.label).join(' / ')}`)
+                      : null) : null,
+                  turn.answer ? h('div', { style: { whiteSpace: 'pre-wrap' } }, h('b', { style: { color: 'var(--dsw-alias-label-secondary)', marginRight: 6 } }, '你'), turn.answer.text || turn.answer.label || '') : null,
+                  turn.reply ? h('div', { style: { whiteSpace: 'pre-wrap' } }, h('b', { style: { color: 'var(--dsw-alias-brand-primary)', marginRight: 6 } }, '助手'), turn.reply) : null,
+                  Array.isArray(turn.tools) && turn.tools.length
+                    ? h('div', { style: { fontSize: 10.5, opacity: .5, lineHeight: 1.5 } }, `工具：${turn.tools.map((tool) => `${tool.name}${tool.target ? `(${tool.target})` : ''}${tool.ok === false ? ' 失败' : ''}`).join(' · ')}`)
+                    : null)),
                 agentSessionDetail.status === 'waiting' && (agentSessionDetail.surfaces || []).some((surface) => surface.status === 'waiting') ? h('button', {
                   type: 'button', className: 'dsan-btn', style: { marginTop: 12 },
                   onClick: () => {

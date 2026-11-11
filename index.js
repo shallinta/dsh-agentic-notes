@@ -4276,6 +4276,9 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   if (!sel) throw new Error('没有可用的默认模型')
   const staged = Array.isArray(job.staged) ? job.staged : []
   job.staged = staged
+  const turn = { id: crypto.randomUUID(), input: instruction, status: 'running', startedAt: nowIso(), round: 0, tools: [] }
+  job.turns = [...(job.turns || []), turn]
+  job.currentTurnId = turn.id
   const createdPaths = new Set()
   const stage = (operation) => {
     if (isDedupable(operation) && staged.some((item) => operationKey(item) === operationKey(operation))) return { staged: true, duplicate: true, count: staged.length }
@@ -4369,6 +4372,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       return { closed: surface.id }
     },
   })
+  const runTool = createNativeToolExecutor(service)
   try {
     let messages = Array.isArray(job.messages) ? job.messages : null
     if (!messages) {
@@ -4395,7 +4399,19 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     const result = await runNativeToolLoop({
       llm: ctx.get('llm'), provider: sel.provider, model: sel.model,
       messages, system: '你是随记的笔记代理。使用工具读写笔记；简单写入可直接执行；正文达到 500 字、一次删除多篇和一次移动多篇必须暂存等待确认。完成后调用 finish。',
-      tools: nativeAgentToolSchemas, executeTool: createNativeToolExecutor(service),
+      tools: nativeAgentToolSchemas, executeTool: async (call) => {
+        const name = String(call?.name || '')
+        const callArgs = call?.args || {}
+        const target = String(callArgs.path || (callArgs.notebook ? `${callArgs.notebook}${callArgs.title ? `/${callArgs.title}` : ''}` : '')).slice(0, 80)
+        try {
+          const out = await runTool(call)
+          if ((turn.tools || []).length < 40) turn.tools.push({ name, target, ok: true })
+          return out
+        } catch (err) {
+          if ((turn.tools || []).length < 40) turn.tools.push({ name, target, ok: false, error: String(err?.message ?? err).slice(0, 120) })
+          throw err
+        }
+      },
       maxRounds: Math.max(1, Math.min(50, Number(readConfig().reactMaxRounds) || 20)),
       maxToolCalls: 60, isCancelled: () => job.cancelled,
     })
@@ -4407,6 +4423,10 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       job.activeSurfaceId = result.surfaceId
       job.awaitingSurfaceId = result.surfaceId
       job.question = surface ? { id: surface.id, question: surface.body, options: surface.options, type: surface.type, title: surface.title, surfaceId: surface.id, allowFreeText: surface.allowFreeText } : null
+      turn.status = 'waiting'
+      turn.question = surface?.body || surface?.title || '等待你的回复'
+      turn.options = surface?.options || []
+      turn.surfaceId = result.surfaceId
       saveAgentSession(root, job)
       return
     }
@@ -4427,6 +4447,9 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
           let replyText = cleanReply ? `${cleanReply}\n\n已直接写入，无需确认。` : '已直接写入。'
           if (rulesUpdated.length) replyText += `\n\n维护规则已沉淀：${rulesUpdated.join('、')}`
           job.result = { reply: replyText, applied: out.applied || [], errors: [], runId: out.runId || null, files: [], rulesUpdated }
+          turn.status = 'done'
+          turn.reply = replyText
+          turn.endedAt = nowIso()
           saveAgentSession(root, job)
           return
         }
@@ -4453,8 +4476,14 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       job.status = 'done'
       job.result = { reply: result.text, applied: [], errors: [], runId: null, files: [] }
     }
+    turn.status = 'done'
+    turn.reply = String(result.text || job.result?.reply || '')
+    turn.endedAt = nowIso()
     saveAgentSession(root, job)
   } catch (err) {
+    turn.status = job.cancelled || err?.cancelled ? 'cancelled' : 'error'
+    turn.error = String(err?.message ?? err)
+    turn.endedAt = nowIso()
     appendAgentLog(root, job, `native loop 失败：${String(err?.stack || err)}`)
     throw err
   }
@@ -5704,9 +5733,13 @@ async function dispatchUnlocked(ctx, op, args) {
           if (!name.endsWith('.json')) continue
           const data = readJson(path.join(dir, name), null)
           if (!data) continue
+          const turns = Array.isArray(data.turns) ? data.turns : []
+          const lastTurn = turns[turns.length - 1] || null
+          const preview = String(lastTurn?.reply || lastTurn?.question || lastTurn?.input || '').replace(/\s+/g, ' ').trim()
           items.push({
             id: data.id, jobId: data.jobId, status: data.status,
-            title: String(data.args?.instruction || 'agent 会话').slice(0, 60),
+            title: String(turns[0]?.input || data.args?.instruction || 'agent 会话').slice(0, 60),
+            preview: preview.slice(0, 80), turnCount: turns.length,
             updatedAt: data.updatedAt, surfaces: (data.surfaces || []).filter((surface) => surface.status === 'waiting'),
           })
         }
@@ -5857,7 +5890,11 @@ async function dispatchUnlocked(ctx, op, args) {
       if (!job) job = loadAgentSessionByJob(root, String(args.id || ''))
       if (!job) throw new Error('找不到这个会话')
       const currentTurn = (job.turns || []).find((turn) => turn.id === job.currentTurnId)
-      if (currentTurn) { currentTurn.status = 'answered'; currentTurn.endedAt = nowIso() }
+      if (currentTurn) {
+        currentTurn.status = 'answered'
+        currentTurn.answer = { label: text, text: '', optionId: '' }
+        currentTurn.endedAt = nowIso()
+      }
       job.history = [...(job.history || []), `用户：${text}`]
       cancelOtherSessionJobs(job.sessionId, job.id)
       job.args = { ...(job.args || {}), instruction: text }
