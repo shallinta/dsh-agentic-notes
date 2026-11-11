@@ -115,12 +115,12 @@ window.__ModuleLoader__.load({
 .dsan-icon-btn{width:30px;height:30px;padding:0;justify-content:center;line-height:1}
 .dsan-icon-btn svg{display:block;flex:none}
 .dsan-crumb{display:flex;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary);font-size:12px;min-width:0;flex:1;overflow:hidden;white-space:nowrap}
-.dsan-crumb>span{display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden}
-.dsan-crumb>span:last-child{flex:1 1 auto}
-.dsan-crumb a{color:inherit;cursor:pointer;text-decoration:none}
+.dsan-crumb>span{display:flex;align-items:center;gap:6px;flex:none;white-space:nowrap}
+.dsan-crumb>span:last-child{flex:0 1 auto;min-width:0;overflow:hidden}
+.dsan-crumb a{color:inherit;cursor:pointer;text-decoration:none;white-space:nowrap}
 .dsan-crumb a:hover{color:var(--dsw-alias-label-primary)}
 .dsan-crumb .sep{opacity:.5;flex:none}
-.dsan-crumb a,.dsan-crumb .cur{display:block;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsan-crumb>span:last-child>a,.dsan-crumb>span:last-child>.cur{display:block;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dsan-crumb .cur{color:var(--dsw-alias-label-primary)}
 .dsan-home-wrap{position:relative;min-height:100%}
 .dsan-home{padding:22px 22px 90px;max-width:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:stretch;position:relative;z-index:auto}
