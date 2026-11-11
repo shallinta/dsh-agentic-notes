@@ -16,6 +16,13 @@ window.__ModuleLoader__.load({
     const ASSET = '/dsh-agentic-notes/asset'
     const STICKY_COLORS = ['#fff7d6', '#e4f8ef', '#ffd3e2', '#ded1ff', '#d0e7ff', '#ffdfc2']
 
+    const SLASH_COMMANDS = [
+      { name: 'memo', desc: '新建便笺' },
+      { name: 'todo', desc: '加一条待办' },
+      { name: 'note', desc: '写一篇笔记' },
+      { name: 'agent', desc: '让 AI 整理' },
+    ]
+
     // 视觉放大：三档。100% 不缩放，200% 时所有尺寸和字号翻倍。
     const UI_SCALE_STEPS = [100, 150, 200]
     function normalizeUiScale(value) {
@@ -73,7 +80,7 @@ window.__ModuleLoader__.load({
 .dsan-preview-img{display:block;max-width:100%;max-height:calc(72vh / var(--dsan-zoom, 1));object-fit:contain;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
 .dsan-attachment .num{position:absolute;left:2px;bottom:2px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;line-height:16px;text-align:center;font-weight:600}
 .dsan-attachment .rm{position:absolute;right:-8px;top:-8px;width:16px;height:16px;border:1px solid var(--dsw-alias-bg-base);border-radius:50%;background:rgba(0,0,0,.78);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
-.dsan-capture-field{position:relative;flex:1;min-width:0;display:flex}.dsan-capture-input{flex:1;min-width:0;width:100%;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;overflow:hidden;transition:height .18s ease}.dsan-capture-input.open{overflow-y:auto}.dsan-capture-ph{position:absolute;left:12px;right:12px;top:8px;line-height:1.5;font:inherit;color:var(--dsw-alias-label-secondary);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.dsan-capture-field{position:relative;flex:1;min-width:0;display:flex}.dsan-capture-input{flex:1;min-width:0;width:100%;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;overflow:hidden;transition:height .18s ease}.dsan-capture-input.open{overflow-y:auto}.dsan-capture-ph{position:absolute;left:12px;right:12px;top:8px;line-height:1.5;font:inherit;color:var(--dsw-alias-label-secondary);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}.dsan-slash-menu{position:absolute;left:22px;top:calc(100% - 4px);z-index:60;min-width:210px;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.22);padding:5px;display:flex;flex-direction:column;gap:2px}.dsan-slash-item{display:flex;align-items:center;gap:10px;padding:6px 9px;border:none;background:none;color:inherit;font:inherit;text-align:left;border-radius:7px;cursor:pointer;white-space:nowrap}.dsan-slash-item:hover{background:var(--dsw-alias-bg-layer-2)}.dsan-slash-item .nm{font-weight:600;font-size:12px}.dsan-slash-item .ds{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
 .dsan-capture-input.open{height:78px}
 .dsan-capture-input:focus{border-color:var(--dsw-alias-brand-primary)}
 .dsan-subbar{display:flex;align-items:center;gap:8px;padding:5px 22px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;font-size:12px;color:var(--dsw-alias-label-secondary);position:relative;z-index:2;min-width:0;flex-wrap:nowrap}
@@ -171,7 +178,7 @@ window.__ModuleLoader__.load({
 .dsan-notebook-page{isolation:isolate}
 .dsan-notebook-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.13;pointer-events:none;z-index:-1;border-radius:12px}
 .dsan-note-page{max-width:840px}
-.dsan-note-head{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.dsan-note-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;flex-wrap:wrap}
 .dsan-note-title{font-size:22px;font-weight:600;margin:0;flex:1;min-width:200px;overflow:hidden;text-overflow:ellipsis}
 .dsan-md{line-height:1.75;overflow-wrap:break-word}
 .dsan-md h1{font-size:24px;margin:26px 0 12px;font-weight:600}
@@ -1319,26 +1326,32 @@ window.__ModuleLoader__.load({
       const suppressCardClick = useRef(false)
       const layoutTimers = useRef({})
       const wrapRef = useRef(null)
+      // 便笺以内容区（滚动区外层，快捷录入以下）为参照：量的是滚动容器自身，
+      // 不是首页内容，内容变长不会改变便笺到右侧和底部的距离。
       const [wrapSize, setWrapSize] = useState({ w: 0, h: 0 })
       useEffect(() => {
         const el = wrapRef.current
         if (!el) return
-        const update = () => setWrapSize({ w: el.clientWidth, h: el.clientHeight })
+        const area = el.closest('.dsan-body') || el
+        const update = () => setWrapSize({ w: area.clientWidth, h: area.clientHeight })
         update()
         const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
-        observer?.observe(el)
+        observer?.observe(area)
         window.addEventListener('resize', update)
         return () => { observer?.disconnect(); window.removeEventListener('resize', update) }
       }, [])
+      // 待办卡片展开时右侧让出 336px，便笺跟着左移，避免被卡片盖住。
+      const areaW = todoOpen ? Math.max(160, wrapSize.w - 336) : wrapSize.w
+      const areaH = wrapSize.h
       const stickies = (state.stickies || []).filter((sticky) => !hiddenStickies.includes(sticky.id)).map((sticky) => {
         const local = dragState[sticky.id] || {}
         const width = Number(local.w ?? sticky.w) || 260
         const height = Number(local.h ?? sticky.h) || 180
         let x = Number(local.x ?? sticky.x) || 0
         let y = Number(local.y ?? sticky.y) || 0
-        if (wrapSize.w && wrapSize.h && Number.isFinite(sticky.right) && Number.isFinite(sticky.bottom)) {
-          if (local.x === undefined) x = Math.max(0, wrapSize.w - Number(sticky.right) - width)
-          if (local.y === undefined) y = Math.max(0, wrapSize.h - Number(sticky.bottom) - height)
+        if (areaW && areaH && Number.isFinite(sticky.right) && Number.isFinite(sticky.bottom)) {
+          if (local.x === undefined) x = Math.max(0, areaW - Number(sticky.right) - width)
+          if (local.y === undefined) y = Math.max(0, areaH - Number(sticky.bottom) - height)
         }
         return {
           ...sticky, x, y, w: width, h: height,
@@ -1358,18 +1371,18 @@ window.__ModuleLoader__.load({
       }
       const migrated = useRef(new Set())
       useEffect(() => {
-        if (!wrapSize.w || !wrapSize.h) return
+        if (!areaW || !areaH) return
         for (const sticky of state.stickies || []) {
-          if (Number.isFinite(sticky.right) && Number.isFinite(sticky.bottom)) continue
+          if (sticky.anchor === 'body') continue
           if (migrated.current.has(sticky.id)) continue
           migrated.current.add(sticky.id)
           api('sticky.save', {
-            id: sticky.id, w: sticky.w, h: sticky.h,
-            right: Math.max(0, wrapSize.w - sticky.x - sticky.w),
-            bottom: Math.max(0, wrapSize.h - sticky.y - sticky.h),
+            id: sticky.id, w: sticky.w, h: sticky.h, anchor: 'body',
+            right: Math.max(0, areaW - Number(sticky.x || 0) - Number(sticky.w || 260)),
+            bottom: Math.max(0, areaH - Number(sticky.y || 0) - Number(sticky.h || 180)),
           }).then(() => refresh()).catch(() => { })
         }
-      }, [wrapSize, state.stickies])
+      }, [areaW, areaH, state.stickies])
 
       const onLayout = (id, patch) => {
         setDragState((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))
@@ -1380,11 +1393,11 @@ window.__ModuleLoader__.load({
           const nextH = Number(patch.h ?? base.h) || 180
           const nextX = Number(patch.x ?? base.x) || 0
           const nextY = Number(patch.y ?? base.y) || 0
-          const payload = (wrapSize.w && wrapSize.h)
+          const payload = (areaW && areaH)
             ? {
-              w: nextW, h: nextH,
-              right: Math.max(0, Math.round(wrapSize.w - nextX - nextW)),
-              bottom: Math.max(0, Math.round(wrapSize.h - nextY - nextH)),
+              w: nextW, h: nextH, anchor: 'body',
+              right: Math.max(0, Math.round(areaW - nextX - nextW)),
+              bottom: Math.max(0, Math.round(areaH - nextY - nextH)),
             }
             : { x: nextX, y: nextY, w: nextW, h: nextH }
           api('sticky.save', { id, ...payload })
@@ -2961,6 +2974,7 @@ window.__ModuleLoader__.load({
       const [toasts, setToasts] = useState(readSavedToasts)
       const [modal, setModal] = useState(null)
       const [captureText, setCaptureText] = useState('')
+      const captureRef = useRef(null)
       const [captureImages, setCaptureImages] = useState([])
       const [previewImage, setPreviewImage] = useState(null)
       const [agentThread, setAgentThread] = useState(readSavedAgentThread)
@@ -3923,14 +3937,14 @@ window.__ModuleLoader__.load({
       }
 
       const stickySpawnPosition = () => {
-        // 便笺层钉在滚动容器顶部，坐标相对可视区域；尺寸按 zoom 折算。
-        const vh = (window.innerHeight || 800) / uiScale
-        const vw = (window.innerWidth || 1200) / uiScale
-        const topOffset = 110
-        const minY = Math.max(40, Math.round(vh * 0.42) - topOffset)
-        const maxY = Math.max(minY + 20, Math.round(vh * 0.92) - topOffset - 180)
+        // 内容区就是滚动容器本身：已经去过头部和快捷录入，坐标直接用它的尺寸。
+        const area = typeof document !== 'undefined' ? document.querySelector('.dsan-body') : null
+        const vh = area?.clientHeight || (window.innerHeight || 800) / uiScale
+        const vw = area?.clientWidth || (window.innerWidth || 1200) / uiScale
+        const minY = Math.max(40, Math.round(vh * 0.3))
+        const maxY = Math.max(minY + 20, Math.round(vh - 220))
         const y = minY + Math.round(Math.random() * Math.max(0, maxY - minY))
-        const x = 40 + Math.round(Math.random() * Math.max(0, vw - 380))
+        const x = 40 + Math.round(Math.random() * Math.max(0, vw - 340))
         return { x, y }
       }
 
@@ -4067,6 +4081,10 @@ window.__ModuleLoader__.load({
         : (Number.isFinite(Number(state.settings?.stickyOpacity)) ? 100 - Number(state.settings.stickyOpacity) : 55)
       const todoTransparencyValue = Number.isFinite(Number(state.settings?.todoTransparency)) ? Number(state.settings.todoTransparency) : 36
       const uiScale = uiScaleFactor(state)
+      const slashQuery = /^\/([a-zA-Z]*)$/.exec(captureText.trim())
+      const slashChoices = slashQuery
+        ? SLASH_COMMANDS.filter((cmd) => cmd.name.startsWith(slashQuery[1].toLowerCase()))
+        : []
       return h('div', {
         className: 'dsan',
         style: {
@@ -4103,6 +4121,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsan-capture-row' },
             h('div', { className: 'dsan-capture-field' },
             h('textarea', {
+              ref: captureRef,
               className: cls('dsan-capture-input', captureFocused && 'open'),
               value: captureText,
               rows: 1,
@@ -4123,6 +4142,11 @@ window.__ModuleLoader__.load({
               },
               onKeyDown: (event) => {
                 if (event.nativeEvent.isComposing) return
+                if ((event.key === 'Enter' || event.key === 'Tab') && slashChoices.length) {
+                  event.preventDefault()
+                  setCaptureText(`/${slashChoices[0].name} `)
+                  return
+                }
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault()
                   submitCapture()
@@ -4147,8 +4171,19 @@ window.__ModuleLoader__.load({
                 }
               },
             }),
-            captureText ? null : h('div', { className: 'dsan-capture-ph' }, '随手记一条，回车存档；可拖入或粘贴图片；/memo 便笺 · /todo 待办 · /note 笔记 · /agent 让 AI 整理')),
+            captureText ? null : h('div', {
+              className: 'dsan-capture-ph',
+              title: '随手记一条，回车存档；可拖入或粘贴图片；输入 / 打开命令列表：/memo 便笺、/todo 待办、/note 笔记、/agent 让 AI 整理',
+            }, '随手记一条，回车存档；可粘贴图片；输入 / 查看命令')),
             h('button', { className: 'dsan-btn primary', onClick: submitCapture }, '随记')),
+          slashChoices.length ? h('div', { className: 'dsan-slash-menu' },
+            slashChoices.map((cmd) => h('button', {
+              key: cmd.name, type: 'button', className: 'dsan-slash-item',
+              onMouseDown: (event) => event.preventDefault(),
+              onClick: () => { setCaptureText(`/${cmd.name} `); captureRef.current?.focus() },
+            },
+              h('span', { className: 'nm' }, `/${cmd.name}`),
+              h('span', { className: 'ds' }, cmd.desc)))) : null,
           captureImages.length ? h('div', { className: 'dsan-attachments' },
             captureImages.map((image, index) => h('div', {
               key: image.id, className: 'dsan-attachment', title: image.name,

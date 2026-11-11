@@ -5940,6 +5940,7 @@ async function dispatchUnlocked(ctx, op, args) {
       for (const key of ['x', 'y', 'w', 'h', 'right', 'bottom']) {
         if (Number.isFinite(Number(args[key]))) sticky[key] = Number(args[key])
       }
+      if (args.anchor === 'body') sticky.anchor = 'body'
       if (typeof args.minimized === 'boolean') sticky.minimized = args.minimized
       if (typeof args.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(args.color)) sticky.color = args.color
       saveManifest(root, manifest)
