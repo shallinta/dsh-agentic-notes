@@ -51,7 +51,7 @@ window.__ModuleLoader__.load({
 .dsan *{box-sizing:border-box}
 .dsan-head{display:flex;align-items:center;gap:10px;padding:9px 22px;flex:none;position:relative;z-index:2}
 .dsan-head .sp{flex:1}
-.dsan-capture{display:flex;flex-direction:column;gap:6px;padding:6px 22px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;position:relative;z-index:2}
+.dsan-capture{display:flex;flex-direction:column;gap:6px;padding:6px 22px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;position:relative;z-index:30}
 .dsan-capture-row{display:flex;align-items:flex-end;gap:8px;min-width:0}
 .dsan-capture-row .dsan-capture-input{flex:1;min-width:0}
 .dsan-attachments{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px 0 0}

@@ -2870,6 +2870,83 @@ function stateSignature(root, manifest) {
   ].join('\n')
 }
 
+function noteFileSignatures(root) {
+  const out = {}
+  for (const rel of listMarkdownFiles(root)) {
+    try {
+      const stat = fs.statSync(path.join(root, rel))
+      out[rel] = `${stat.size}:${Math.round(stat.mtimeMs)}`
+    } catch { /* ignore */ }
+  }
+  return out
+}
+
+// Agent 的改动基线：按类别存，比对时只看这次操作真正会碰到的部分。
+// 后台归档、定时提醒等写别处不会再把正常任务判成冲突。
+function agentBaseline(root, manifest) {
+  const todo = readJson(todoPath(root), { items: [] })
+  const { mcpToken, ...safeConfig } = readConfig()
+  return JSON.stringify({
+    files: noteFileSignatures(root),
+    todo: JSON.stringify(todo.items || []),
+    stickies: JSON.stringify((manifest.stickies || []).map((sticky) => [sticky.id, sticky.pinned === true, sticky.color || '', sticky.minimized === true, sticky.w, sticky.h])),
+    noteOrder: JSON.stringify(manifest.noteOrder || {}),
+    notebooks: JSON.stringify((manifest.notebooks || []).map((notebook) => ({ name: notebook.name, description: notebook.description || '', keywords: notebook.keywords || [], private: notebook.private === true }))),
+    ui: JSON.stringify(manifest.ui || {}),
+    config: JSON.stringify(safeConfig),
+  })
+}
+
+function signatureTargets(operations) {
+  const paths = new Set()
+  const kinds = new Set()
+  for (const op of operations || []) {
+    kinds.add(String(op?.op || ''))
+    for (const field of ['path', 'from', 'to']) if (op?.[field]) paths.add(String(op[field]))
+    if (op?.op === 'create' && op.notebook && op.title) paths.add(`${safeName(op.notebook, '')}/${safeName(op.title, '')}.md`)
+  }
+  return { paths, kinds }
+}
+
+function signatureMismatch(expected, root, manifest, operations) {
+  const text = String(expected || '')
+  if (!text) return ''
+  if (!text.startsWith('{')) {
+    return stateSignature(root, manifest) === text ? '' : '笔记或待办在这期间被改动过，请重新生成方案'
+  }
+  let base = null
+  try { base = JSON.parse(text) } catch { base = null }
+  if (!base || typeof base !== 'object' || !base.files) {
+    return stateSignature(root, manifest) === text ? '' : '笔记或待办在这期间被改动过，请重新生成方案'
+  }
+  const { paths, kinds } = signatureTargets(operations)
+  const has = (list) => [...kinds].some((kind) => list.includes(kind))
+  const filesNow = noteFileSignatures(root)
+  for (const rel of paths) {
+    if ((base.files[rel] || '') !== (filesNow[rel] || '')) return `「${rel}」在这期间被改动过，请重新生成方案`
+  }
+  if (has(['write', 'create', 'rename', 'move', 'delete', 'frontmatter', 'fileMove', 'fileCopy', 'fileDelete', 'reorderNotes'])
+    && String(base.noteOrder) !== JSON.stringify(manifest.noteOrder || {})) return '笔记排序在这期间被改动过，请重新生成方案'
+  if (has(['renameNotebook', 'deleteNotebook', 'reorderNotebooks', 'updateNotebook', 'setNotebookPrivate'])) {
+    const booksNow = JSON.stringify((manifest.notebooks || []).map((notebook) => ({ name: notebook.name, description: notebook.description || '', keywords: notebook.keywords || [], private: notebook.private === true })))
+    if (String(base.notebooks) !== booksNow) return '笔记本信息在这期间被改动过，请重新生成方案'
+  }
+  if (has(['todoAdd', 'todoUpdate', 'todoDelete'])) {
+    const todoNow = JSON.stringify(readJson(todoPath(root), { items: [] }).items || [])
+    if (String(base.todo) !== todoNow) return '待办在这期间被改动过，请重新生成方案'
+  }
+  if (has(['memoCreate', 'memoUpdate', 'memoDelete', 'memoPin'])) {
+    const stickiesNow = JSON.stringify((manifest.stickies || []).map((sticky) => [sticky.id, sticky.pinned === true, sticky.color || '', sticky.minimized === true, sticky.w, sticky.h]))
+    if (String(base.stickies) !== stickiesNow) return '便笺在这期间被改动过，请重新生成方案'
+  }
+  if (has(['settingsUpdate', 'setPrivacyMode'])) {
+    const { mcpToken: _token, ...safeConfig } = readConfig()
+    if (String(base.config) !== JSON.stringify(safeConfig)) return '设置在这期间被改动过，请重新生成方案'
+    if (String(base.ui) !== JSON.stringify(manifest.ui || {})) return '界面状态在这期间被改动过，请重新生成方案'
+  }
+  return ''
+}
+
 function snapshotNotebook(root, runId, notebooksBefore, noteOrderBefore, stickiesBefore, todoBefore) {
   const dir = path.join(root, META_DIR, 'agent-runs', runId)
   fs.mkdirSync(dir, { recursive: true })
@@ -3105,8 +3182,9 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
   return enqueueRootWrite(root, async () => {
     if (typeof guard === 'function') guard()
     const currentManifest = readManifest(root)
-    if (expectedSignature && stateSignature(root, currentManifest) !== expectedSignature) {
-      throw new Error('改动基线已变化，请重新生成方案')
+    if (expectedSignature) {
+      const reason = signatureMismatch(expectedSignature, root, currentManifest, operations)
+      if (reason) throw new Error(reason)
     }
     const configBefore = JSON.parse(JSON.stringify(readConfig()))
     const currentToken = configBefore.mcpToken || ''
@@ -4271,7 +4349,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
   const instruction = String(args.instruction || '').trim()
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
   const scope = collectAgentContext(root, manifest, context, 40000)
-  job.baselineSignature = job.baselineSignature || stateSignature(root, manifest)
+  job.baselineSignature = job.baselineSignature || agentBaseline(root, manifest)
   const sel = modelSelection(ctx, root)
   if (!sel) throw new Error('没有可用的默认模型')
   const staged = Array.isArray(job.staged) ? job.staged : []
@@ -4313,6 +4391,8 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
     renameNote: async (a) => stage({ op: 'rename', path: a.path, title: a.title }),
     moveNote: async (a) => stage({ op: 'move', path: a.path, notebook: a.notebook, title: a.title }),
     deleteNote: async (a) => stage({ op: 'delete', path: a.path }),
+    reorderNotes: async (a) => stage({ op: 'reorderNotes', notebook: a.notebook, paths: a.paths }),
+    reorderNotebooks: async (a) => stage({ op: 'reorderNotebooks', names: a.names }),
     updateFrontmatter: async (a) => stage({ op: 'frontmatter', path: a.path, set: a.set, unset: a.unset }),
     todoAdd: async (a) => stage({ op: 'todoAdd', text: a.text, tags: a.tags }),
     todoUpdate: async (a) => stage({ op: 'todoUpdate', id: a.id, text: a.text, tags: a.tags, done: a.done }),
@@ -4435,7 +4515,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
       try {
         const impact = taskImpact(root, staged)
         const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, false, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
-        if (!out.errors?.length) job.baselineSignature = stateSignature(root, readManifest(root))
+        if (!out.errors?.length) job.baselineSignature = agentBaseline(root, readManifest(root))
         if (!out.errors?.length) {
           const cleanReply = String(result.text || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim()
           addTaskImpact(job, impact)
@@ -4522,6 +4602,8 @@ const MCP_WRITE_TOOLS = [
   ['memo_create', '新建便笺', { items: 'array', color: 'string' }, ['items']],
   ['memo_update', '更新便笺', { id: 'string', items: 'array', color: 'string' }, ['id']],
   ['memo_delete', '删除便笺', { id: 'string' }, ['id']],
+  ['reorder_notes', '调整笔记本内笔记顺序，paths 必须是该笔记本全部笔记的新顺序', { notebook: 'string', paths: 'array' }, ['notebook', 'paths']],
+  ['reorder_notebooks', '调整笔记本顺序，names 必须是全部笔记本的新顺序', { names: 'array' }, ['names']],
   ['update_notebook', '修改笔记本的名称、描述、关键词或 Agent 维护规则。动手前先读 list_notebooks 里的 agentRules 与 manualRules；两者冲突时以 manualRules 为准。严禁修改 manualRules（仅人工维护、只读，写入会被拒绝），也严禁用改写笔记绕过它。', { notebook: 'string', nextName: 'string', description: 'string', keywords: 'array', agentRules: 'string' }, ['notebook']],
 ].map(([name, description, props, required]) => ({
   name, description,
@@ -4567,6 +4649,8 @@ async function callHttpMcpTool(root, name, args = {}, ctx = null) {
   else if (name === 'memo_create') operation = { op: 'memoCreate', items: args.items, color: args.color }
   else if (name === 'memo_update') operation = { op: 'memoUpdate', id: args.id, items: args.items, color: args.color }
   else if (name === 'memo_delete') operation = { op: 'memoDelete', id: args.id }
+  else if (name === 'reorder_notes') operation = { op: 'reorderNotes', notebook: args.notebook, paths: args.paths }
+  else if (name === 'reorder_notebooks') operation = { op: 'reorderNotebooks', names: args.names }
   else if (name === 'update_notebook') operation = { op: 'updateNotebook', notebook: args.notebook, title: args.nextName, description: args.description, keywords: args.keywords, agentRules: args.agentRules }
   else throw new Error(`未知工具：${name}`)
   const versionGuard = () => {
@@ -4621,7 +4705,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
   const instruction = String(args.instruction || '').trim()
   const context = args.context && typeof args.context === 'object' ? args.context : { view: 'home' }
   const scope = collectAgentContext(root, manifest, context, 40000)
-  const baseSignature = job.baselineSignature || stateSignature(root, readManifest(root))
+  const baseSignature = job.baselineSignature || agentBaseline(root, readManifest(root))
   job.baselineSignature = baseSignature
   const staged = Array.isArray(job.staged) ? job.staged : []
   job.staged = staged
@@ -4634,7 +4718,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
     '你是随记的 ReAct 笔记代理。每次只返回一个 JSON 对象，不要 markdown，不要解释。',
     '最高优先级：action 只能是 tool、tools、ask_user、finish 四者之一。工具名只能放在 tool 字段，绝不能把工具名写进 action。输出前先确认 JSON.parse 能解析。',
     '动作格式：{"action":"tool","tool":"工具名","args":{...}}，或多工具 {"action":"tools","calls":[{"tool":"update_surface","args":{...}},{"tool":"read_note","args":{...}}]}（一轮最多一个写工具；wait_surface 只能放在最后），或者 {"action":"ask_user","question":"问题","options":[...],"allowFreeText":true}（ask_user 必须有非空 options；只让用户自由回复请用 create_surface），最后用 {"action":"finish","reply":"给用户的结果"}。开始任务后先用 create_surface 创建一个进度提示，拿到 surface id；之后每轮用 update_surface 更新它的标题和正文，用读者能理解的话，不要出现工具名。',
-    '可用工具：create_surface、update_surface、close_surface、list_notebooks、update_notebook {notebook, nextName?, description?, keywords?, agentRules?}、list_notes {notebook}、read_note {path}、read_todo、read_stickies、read_settings、web_fetch {url}、browser_open {url}、wait_surface、begin_transaction、commit_transaction、stage_operations {operations:[...]}、apply_operations {operations:[...]}、create_note、write_note、rename_note、move_note、delete_note、update_frontmatter、todo_add、todo_update、todo_delete、memo_create、memo_update、memo_delete、settings_update、set_privacy。',
+    '可用工具：create_surface、update_surface、close_surface、list_notebooks、update_notebook {notebook, nextName?, description?, keywords?, agentRules?}、list_notes {notebook}、read_note {path}、read_todo、read_stickies、read_settings、web_fetch {url}、browser_open {url}、wait_surface、begin_transaction、commit_transaction、stage_operations {operations:[...]}、apply_operations {operations:[...]}、create_note、write_note、rename_note、move_note、delete_note、reorder_notes {notebook, paths}、reorder_notebooks {names}、update_frontmatter、todo_add、todo_update、todo_delete、memo_create、memo_update、memo_delete、settings_update、set_privacy。',
     '简单写入直接执行。长笔记内容（达到 500 字）、一次删除多篇、一次移动多篇必须先暂存并等待用户确认。',
     '操作某个笔记本前，先看它给出的 agentRules 和 manualRules。两条规则冲突时以 manualRules 为准，它无条件优先。绝对禁止修改 manualRules：仅人工维护、只读，任何写入都会被宿主拒绝；也不要用改写笔记的方式绕过它。有值得沉淀的经验或用户明确要求时，用 update_notebook 更新 agentRules，且不得削弱 manualRules 的限制。',
     '同一 session 同时只能有一个主 surface。已有 active surface 时不要 create_surface，改用 update_surface；长任务用 kind:"progress" 表示进行中，结束时关闭或更新。只有任务状态真的变化时才更新进度，不要连续重复刷新同一段内容；每轮应优先推进实际工作。',
@@ -4844,7 +4928,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
         } else {
           const impact = taskImpact(root, operations)
           const out = await applyAgentOperations(root, operations, instruction, job.baselineSignature, false, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
-          if (!out.errors?.length) { job.baselineSignature = stateSignature(root, readManifest(root)); addTaskImpact(job, impact) }
+          if (!out.errors?.length) { job.baselineSignature = agentBaseline(root, readManifest(root)); addTaskImpact(job, impact) }
           applied.push(...(out.applied || []))
           if (out.errors?.length) throw new Error(`部分操作失败：${out.errors.join('；')}`)
           for (const item of out.applied || []) if (item.op === 'create' && item.path) createdPaths.add(item.path)
@@ -4913,7 +4997,7 @@ async function runReactAgent(ctx, root, manifest, args, job) {
       const impact = taskImpact(root, staged)
       const out = await applyAgentOperations(root, staged, instruction, job.baselineSignature, false, () => { if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true }) })
       if (!out.errors?.length) {
-        job.baselineSignature = stateSignature(root, readManifest(root))
+        job.baselineSignature = agentBaseline(root, readManifest(root))
         addTaskImpact(job, impact)
         applied.push(...(out.applied || []))
         staged.length = 0
@@ -4924,7 +5008,10 @@ async function runReactAgent(ctx, root, manifest, args, job) {
   }
   if (job.cancelled) throw Object.assign(new Error('已取消'), { cancelled: true })
   if (staged.length) {
-    if (stateSignature(root, readManifest(root)) !== job.baselineSignature) throw new Error('ReAct 期间笔记或待办已有新的改动，请重试')
+    {
+      const reason = signatureMismatch(job.baselineSignature, root, readManifest(root), staged)
+      if (reason) throw new Error(reason)
+    }
     const id = crypto.randomUUID()
     const summary = summarizeOperations(staged)
     const pending = {
@@ -5981,8 +6068,14 @@ async function dispatchUnlocked(ctx, op, args) {
         const pending = readJson(file, null)
         if (!pending) throw new Error('找不到待确认的改动')
         if (pending.status && pending.status !== 'waiting') throw new Error('这个提案已经处理，不能重复确认')
-        const currentSignature = pending.source === 'mcp' ? proposalSignature(root) : stateSignature(root, manifest)
-        if (pending.signature && currentSignature !== pending.signature) throw new Error('确认前笔记已有改动，请重新生成方案')
+        if (pending.source === 'mcp') {
+          if (pending.signature && proposalSignature(root) !== pending.signature) throw new Error('确认前笔记已有改动，请重新生成方案')
+        } else if (pending.kind === 'capture') {
+          if (pending.signature && stateSignature(root, manifest) !== pending.signature) throw new Error('确认前笔记已有改动，请重新生成方案')
+        } else {
+          const reason = signatureMismatch(pending.signature, root, manifest, pending.operations || [])
+          if (reason) throw new Error(reason)
+        }
         if (pending.kind === 'capture') {
           const copied = []
           try {

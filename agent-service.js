@@ -5,6 +5,7 @@
 const METHODS = [
   'listNotebooks', 'updateNotebook', 'listNotes', 'readNote', 'readTodo', 'readStickies', 'readSettings', 'webFetch',
   'createNote', 'writeNote', 'renameNote', 'moveNote', 'deleteNote', 'updateFrontmatter',
+  'reorderNotes', 'reorderNotebooks',
   'todoAdd', 'todoUpdate', 'todoDelete', 'memoCreate', 'memoUpdate', 'memoDelete',
   'settingsUpdate', 'setPrivacy', 'stageOperations', 'applyOperations',
   'createSurface', 'updateSurface', 'closeSurface',
