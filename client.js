@@ -73,10 +73,10 @@ window.__ModuleLoader__.load({
 .dsan-preview-img{display:block;max-width:100%;max-height:calc(72vh / var(--dsan-zoom, 1));object-fit:contain;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
 .dsan-attachment .num{position:absolute;left:2px;bottom:2px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;line-height:16px;text-align:center;font-weight:600}
 .dsan-attachment .rm{position:absolute;right:-8px;top:-8px;width:16px;height:16px;border:1px solid var(--dsw-alias-bg-base);border-radius:50%;background:rgba(0,0,0,.78);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
-.dsan-capture-input{flex:1;min-width:0;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;transition:height .18s ease}
+.dsan-capture-field{position:relative;flex:1;min-width:0;display:flex}.dsan-capture-input{flex:1;min-width:0;width:100%;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;overflow:hidden;transition:height .18s ease}.dsan-capture-input.open{overflow-y:auto}.dsan-capture-ph{position:absolute;left:12px;right:12px;top:8px;line-height:1.5;font:inherit;color:var(--dsw-alias-label-secondary);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .dsan-capture-input.open{height:78px}
 .dsan-capture-input:focus{border-color:var(--dsw-alias-brand-primary)}
-.dsan-subbar{display:flex;align-items:center;gap:8px;padding:5px 22px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;font-size:12px;color:var(--dsw-alias-label-secondary);position:relative;z-index:2}
+.dsan-subbar{display:flex;align-items:center;gap:8px;padding:5px 22px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;font-size:12px;color:var(--dsw-alias-label-secondary);position:relative;z-index:2;min-width:0;flex-wrap:nowrap}
 .dsan-capture .dsan-btn.primary{height:38px;border-radius:9px;padding:0 14px}
 .dsan-subbar .t{color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dsan-brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;white-space:nowrap;cursor:pointer}
@@ -84,7 +84,7 @@ window.__ModuleLoader__.load({
 .dsan-cap{flex:1;display:flex;gap:8px;min-width:0}
 .dsan-cap textarea{flex:1;min-width:0;height:72px;min-height:72px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:vertical}
 .dsan-cap textarea:focus{border-color:var(--dsw-alias-brand-primary)}
-.dsan-back{height:30px;padding:0 8px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;border-radius:7px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.dsan-back{height:30px;padding:0 8px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;border-radius:7px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex:none}
 .dsan-back:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
 .dsan-sec-row{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin-bottom:10px}
 .dsan-switch-row{display:inline-flex;align-items:center;gap:8px;border:none;background:none;padding:0;color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;cursor:pointer;text-align:left}
@@ -114,11 +114,14 @@ window.__ModuleLoader__.load({
 .dsan-btn:disabled{opacity:.5;cursor:default}
 .dsan-icon-btn{width:30px;height:30px;padding:0;justify-content:center;line-height:1}
 .dsan-icon-btn svg{display:block;flex:none}
-.dsan-crumb{display:flex;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary);font-size:12px;min-width:0}
+.dsan-crumb{display:flex;align-items:center;gap:6px;color:var(--dsw-alias-label-secondary);font-size:12px;min-width:0;flex:1;overflow:hidden;white-space:nowrap}
+.dsan-crumb>span{display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden}
+.dsan-crumb>span:last-child{flex:1 1 auto}
 .dsan-crumb a{color:inherit;cursor:pointer;text-decoration:none}
 .dsan-crumb a:hover{color:var(--dsw-alias-label-primary)}
-.dsan-crumb .sep{opacity:.5}
-.dsan-crumb .cur{color:var(--dsw-alias-label-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsan-crumb .sep{opacity:.5;flex:none}
+.dsan-crumb a,.dsan-crumb .cur{display:block;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsan-crumb .cur{color:var(--dsw-alias-label-primary)}
 .dsan-home-wrap{position:relative;min-height:100%}
 .dsan-home{padding:22px 22px 90px;max-width:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:stretch;position:relative;z-index:auto}
 .dsan-home.todo-open{padding-right:336px}
@@ -235,7 +238,7 @@ window.__ModuleLoader__.load({
 .dsan-todo-add{padding:8px 10px;border-top:1px solid var(--dsw-alias-border-l1)}
 .dsan-todo-add input{width:100%;height:30px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:transparent;color:inherit;padding:0 9px;font:inherit;outline:none}
 .dsan-ball{position:absolute;width:46px;height:46px;border-radius:50%;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);font-weight:600;font-size:12px;z-index:20;border:none}
-.dsan-sticky-layer{position:absolute;inset:0;pointer-events:none;z-index:10}
+.dsan-sticky-layer{position:sticky;top:0;left:0;width:100%;height:0;pointer-events:none;z-index:10}
 .dsan-sticky{position:absolute;pointer-events:auto;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.16);display:flex;flex-direction:column;min-width:180px;min-height:110px;overflow:hidden;transition:box-shadow .15s}
 .dsan-sticky.colored{background:color-mix(in srgb, var(--dsan-sticky-tint) var(--dsan-sticky-opacity, 45%), transparent)}
 .dsan-sticky.colored:focus-within{background:var(--dsan-sticky-tint)}
@@ -1450,6 +1453,12 @@ window.__ModuleLoader__.load({
       }
       const visibleNotebooks = privacyMode ? state.notebooks.filter((notebook) => notebook.private !== true) : state.notebooks
       return h('div', { className: 'dsan-home-wrap', ref: wrapRef },
+        h('div', { className: 'dsan-sticky-layer' },
+          stickies.map((sticky) => h(StickyCard, {
+            key: sticky.id, sticky, floating: false, canMinimize: false,
+            onSave: refresh, onDelete: removeSticky, onLayout, onRaise: raiseSticky,
+            scale: uiScaleFactor(state),
+          }))),
         h('div', { className: cls('dsan-home', todoOpen && 'todo-open') },
           h('div', { className: 'dsan-home-main' },
             h('div', { className: 'dsan-sec-row' },
@@ -1545,13 +1554,7 @@ window.__ModuleLoader__.load({
               (dropNotebook && Number.isFinite(dropNotebook.lineX))
                 ? h('div', { className: 'dsan-insert-line', style: { left: `${dropNotebook.lineX}px`, top: `${dropNotebook.lineY}px`, height: `${dropNotebook.lineH}px` } })
                 : null),
-          )),
-        h('div', { className: 'dsan-sticky-layer' },
-          stickies.map((sticky) => h(StickyCard, {
-            key: sticky.id, sticky, floating: false, canMinimize: false,
-            onSave: refresh, onDelete: removeSticky, onLayout, onRaise: raiseSticky,
-            scale: uiScaleFactor(state),
-          }))))
+          )))
     }
 
     // ------------------------------------------------------------------ 笔记
@@ -3852,7 +3855,7 @@ window.__ModuleLoader__.load({
             setCaptureText('')
             const items = rest.split('\n').map((line) => line.trim()).filter(Boolean)
             try {
-              const created = await api('sticky.create', stickySpawnPosition(view.kind === 'home'))
+              const created = await api('sticky.create', stickySpawnPosition())
               await api('sticky.save', { id: created.sticky.id, items })
               refresh()
               pushToast({ title: '便笺已创建', body: items.join(' / ') })
@@ -3919,22 +3922,21 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const stickySpawnPosition = (useScroll = true) => {
-        // 便笺的坐标是 zoom 之后的内部像素，可视区域要按缩放折算。
+      const stickySpawnPosition = () => {
+        // 便笺层钉在滚动容器顶部，坐标相对可视区域；尺寸按 zoom 折算。
         const vh = (window.innerHeight || 800) / uiScale
         const vw = (window.innerWidth || 1200) / uiScale
-        const scrollTop = useScroll ? (document.querySelector('.dsan-body')?.scrollTop || 0) : 0
         const topOffset = 110
         const minY = Math.max(40, Math.round(vh * 0.42) - topOffset)
         const maxY = Math.max(minY + 20, Math.round(vh * 0.92) - topOffset - 180)
-        const y = scrollTop + minY + Math.round(Math.random() * Math.max(0, maxY - minY))
+        const y = minY + Math.round(Math.random() * Math.max(0, maxY - minY))
         const x = 40 + Math.round(Math.random() * Math.max(0, vw - 380))
         return { x, y }
       }
 
       const createHomeSticky = async () => {
         try {
-          await api('sticky.create', stickySpawnPosition(true))
+          await api('sticky.create', stickySpawnPosition())
           refresh()
         } catch (err) { pushToast({ title: '便笺没建出来', body: err.message }) }
       }
@@ -4099,11 +4101,11 @@ window.__ModuleLoader__.load({
           },
         },
           h('div', { className: 'dsan-capture-row' },
+            h('div', { className: 'dsan-capture-field' },
             h('textarea', {
               className: cls('dsan-capture-input', captureFocused && 'open'),
               value: captureText,
               rows: 1,
-              placeholder: '随手记一条，回车存档；可拖入或粘贴图片；/memo 便笺 · /todo 待办 · /note 笔记 · /agent 让 AI 整理',
               onFocus: () => setCaptureFocused(true),
               onBlur: () => setCaptureFocused(false),
               onChange: (event) => setCaptureText(event.target.value),
@@ -4145,6 +4147,7 @@ window.__ModuleLoader__.load({
                 }
               },
             }),
+            captureText ? null : h('div', { className: 'dsan-capture-ph' }, '随手记一条，回车存档；可拖入或粘贴图片；/memo 便笺 · /todo 待办 · /note 笔记 · /agent 让 AI 整理')),
             h('button', { className: 'dsan-btn primary', onClick: submitCapture }, '随记')),
           captureImages.length ? h('div', { className: 'dsan-attachments' },
             captureImages.map((image, index) => h('div', {
@@ -4160,7 +4163,7 @@ window.__ModuleLoader__.load({
         view.kind !== 'home' ? h('div', { className: 'dsan-subbar' },
           h('button', { className: 'dsan-back', onClick: goBack, title: '返回' }, '‹ 返回'),
           trail.length ? h('div', { className: 'dsan-crumb' }, trail.map((item, index) => h('span', {
-            key: index, style: { display: 'inline-flex', alignItems: 'center', gap: 6 },
+            key: index, style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 },
           },
             index > 0 ? h('span', { className: 'sep' }, '/') : null,
             item.onClick
