@@ -3783,7 +3783,7 @@ async function runAgent(ctx, root, manifest, args, shouldCancel = null) {
   const applied = outcome.applied
   const errors = outcome.errors
   const runId = outcome.runId
-  const rulesUpdated = applied?.length
+  const rulesUpdated = applied?.length && !errors?.length
     ? await distillNotebookRules(ctx, root, { instruction, operations, view: context.view })
     : []
   const replyOut = rulesUpdated.length ? `${replyText}\n\n维护规则已沉淀：${rulesUpdated.join('、')}` : replyText
@@ -5962,7 +5962,7 @@ async function dispatchUnlocked(ctx, op, args) {
           writeJson(file, pending)
         } else fs.rmSync(file, { force: true })
         let reply = pending.reply || ''
-        if (pending.distillScope) {
+        if (pending.distillScope && !outcome.errors?.length) {
           const rulesUpdated = await distillNotebookRules(ctx, root, { instruction: pending.instruction || '', operations: pending.operations || [], view: pending.distillScope.view })
           if (rulesUpdated.length) reply = `${reply}\n\n维护规则已沉淀：${rulesUpdated.join('、')}`.trim()
         }
