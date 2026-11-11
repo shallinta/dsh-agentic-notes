@@ -1308,7 +1308,8 @@ async function classifyReact(ctx, root, manifest, capture) {
     '你在给随记的一条快捷记录选笔记本和笔记。用 ReAct 工具先看已有结构，再决定。',
     '每次只返回 JSON：{"action":"tool","tool":"list_notebooks|list_notes|read_note","args":{...}} 或 {"action":"finish","notebook":"笔记本名","note":"笔记标题","newNotebook":false,"newNote":false,"reason":"理由"}。',
     '最多 5 轮。优先归入已有笔记本和笔记；确实不合适才新建；需要用户选择时使用 {"action":"ask_user","question":"...","options":[{"id":"A","label":"..."}]}。',
-    '笔记本的 manualRules 是人工制定、优先级最高的约束，agentRules 次之，冲突时以 manualRules 为准。如果内容明显属于某本笔记本但它的规则禁止自动写入：优先改选同样合适的其他笔记本，或新建一个；确实只能归入它时，用 ask_user 请用户同意，再提交分类。',
+    '每个笔记本的 manualRules 和 agentRules 是它自己的维护约定，必须遵守；两条冲突时以 manualRules 为准。规则是给你看的，不要向用户复述，也不要要求用户复述一遍。',
+    '当内容最合适的笔记本被它的规则挡住时，按规则允许的方式处理：改选同样合适的其他笔记本、新建一本、或者采用规则允许的写入方式；如果规则要求用户参与，或你判断只能由用户决定，就先用 ask_user 问清楚，再提交分类，不要自行绕过规则。',
     '最终必须调用 {"action":"assign_capture","notebook":"...","note":"...","newNote":false,"bullets":["..."],"tags":["..."],"summary":"...","notebookMeta":{"description":"可选，整本一句话描述","keywords":["可选，3 到 6 个关键词"]}} 提交归类；notebookMeta 只在这条记录让整本主题变化时给出。',
   ].join('\n')
   let conversation = `待归档记录：${capture.text}`
@@ -1348,7 +1349,8 @@ async function classify(ctx, root, manifest, capture) {
     'newNote（布尔，是否新建笔记）、reason（一句话理由）。',
     '优先归入已有笔记本；只有当内容明显不属于任何已有笔记本时，才新建。',
     'needsPermission（可选布尔，仅在需要用户同意后才能写入目标笔记本时设为 true）、permissionReason（可选字符串，说明为什么要用户确认）、',
-    '每个笔记本的 manualRules 是人工制定、优先级最高的约束，agentRules 次之；两者冲突时以 manualRules 为准。如果内容明显属于某本笔记本、但它的规则禁止自动写入：先看有没有同样合适的其他已有笔记本，没有就新建一个合适的笔记本；确实只能归入它时，把 needsPermission 设为 true，并在 permissionReason 里写明理由，交给用户确认。',
+    '每个笔记本的 manualRules 和 agentRules 是它自己的维护约定，必须遵守；两条冲突时以 manualRules 为准。规则是给你看的，不要向用户复述。',
+    '当内容最合适的笔记本被它的规则挡住时，按规则允许的方式处理：改选同样合适的其他已有笔记本、新建一本、或者采用规则允许的写入方式。如果规则要求用户参与，或你判断只能由用户决定，就设 needsPermission 为 true 并写清 permissionReason，交给用户确认；不要自行绕过规则。',
     '笔记标题要具体、可检索，不要用“杂项”“其他”这类词。',
   ].join('\n')
   const user = [
