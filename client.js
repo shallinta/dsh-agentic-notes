@@ -16,6 +16,16 @@ window.__ModuleLoader__.load({
     const ASSET = '/dsh-agentic-notes/asset'
     const STICKY_COLORS = ['#fff7d6', '#e4f8ef', '#ffd3e2', '#ded1ff', '#d0e7ff', '#ffdfc2']
 
+    // 视觉放大：三档。100% 不缩放，200% 时所有尺寸和字号翻倍。
+    const UI_SCALE_STEPS = [100, 150, 200]
+    function normalizeUiScale(value) {
+      const n = Math.round(Number(value))
+      return UI_SCALE_STEPS.includes(n) ? n : 100
+    }
+    // 元素用 CSS zoom 放大后，指针位移（视口 CSS 像素）比元素内部像素大，
+    // 拖动和裁剪都要按这个系数折算回内部坐标。
+    const uiScaleFactor = (state) => normalizeUiScale(state?.settings?.uiScale) / 100
+
     async function api(op, args = {}) {
       const res = await fetch(API, {
         method: 'POST',
@@ -41,9 +51,9 @@ window.__ModuleLoader__.load({
 .dsan-attachment{position:relative;width:42px;height:42px;margin:0 6px 6px 0;overflow:visible}
 .dsan-attachment img{width:100%;height:100%;object-fit:cover;display:block;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
 .dsan-surface-stack.dsan-unified-stack{flex-direction:column-reverse}
-.dsan-unified-stack .dsan-toast{width:360px;max-width:calc(100vw - 44px)}
+.dsan-unified-stack .dsan-toast{width:360px;max-width:calc(100vw / var(--dsan-zoom, 1) - 44px)}
 .dsan-surface-stack{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:14px;align-items:flex-end;padding:8px;background:transparent;overflow:visible;isolation:isolate}
-.dsan-surface-toast{position:relative;right:auto;bottom:auto;z-index:0;width:360px;max-width:calc(100vw - 44px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 4px 14px -2px rgba(0,0,0,.18);padding:13px}
+.dsan-surface-toast{position:relative;right:auto;bottom:auto;z-index:0;width:360px;max-width:calc(100vw / var(--dsan-zoom, 1) - 44px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 4px 14px -2px rgba(0,0,0,.18);padding:13px}
 .dsan-surface-toast .x{position:absolute;bottom:8px;right:8px;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;border-radius:6px}
 .dsan-progress-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary);margin-top:5px}
 .dsan-surface-progress .dsan-progress-row{position:absolute;top:12px;right:12px;margin:0}
@@ -58,12 +68,12 @@ window.__ModuleLoader__.load({
 .dsan-settings-avatar-wrap{position:relative;width:152px;height:152px;border-radius:50%;overflow:hidden;background:transparent;border:1px solid var(--dsw-alias-border-l2);box-shadow:0 0 0 4px var(--dsw-alias-bg-overlay),0 0 0 5px color-mix(in srgb, var(--dsw-alias-border-l2) 78%, var(--dsw-alias-label-secondary))}
 .dsan-settings-avatar{width:100%;height:100%;aspect-ratio:1;border-radius:50%;object-fit:cover;display:block;background:transparent}
 .dsan-settings-ver{position:absolute;left:calc(100% + 12px);bottom:8px;padding:0;border:none;background:transparent;font-size:12px;line-height:1.35;font-weight:500;color:var(--dsw-alias-label-primary);white-space:nowrap}
-.dsan-agent-prev{max-height:32vh;overflow:auto;white-space:pre-wrap;line-height:1.55;font-size:13px;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.dsan-agent-prev{max-height:calc(32vh / var(--dsan-zoom, 1));overflow:auto;white-space:pre-wrap;line-height:1.55;font-size:13px;color:var(--dsw-alias-label-secondary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .dsan-preview-body{display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18);min-height:160px}
-.dsan-preview-img{display:block;max-width:100%;max-height:72vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
+.dsan-preview-img{display:block;max-width:100%;max-height:calc(72vh / var(--dsan-zoom, 1));object-fit:contain;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
 .dsan-attachment .num{position:absolute;left:2px;bottom:2px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;line-height:16px;text-align:center;font-weight:600}
 .dsan-attachment .rm{position:absolute;right:-8px;top:-8px;width:16px;height:16px;border:1px solid var(--dsw-alias-bg-base);border-radius:50%;background:rgba(0,0,0,.78);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
-.dsan-capture-input{flex:1;min-width:0;height:38px;min-height:38px;max-height:40vh;border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;transition:height .18s ease}
+.dsan-capture-input{flex:1;min-width:0;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;transition:height .18s ease}
 .dsan-capture-input.open{height:78px}
 .dsan-capture-input:focus{border-color:var(--dsw-alias-brand-primary)}
 .dsan-subbar{display:flex;align-items:center;gap:8px;padding:5px 22px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;font-size:12px;color:var(--dsw-alias-label-secondary);position:relative;z-index:2}
@@ -72,7 +82,7 @@ window.__ModuleLoader__.load({
 .dsan-brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;white-space:nowrap;cursor:pointer}
 .dsan-brand svg{width:18px;height:18px;color:var(--dsw-alias-brand-primary)}
 .dsan-cap{flex:1;display:flex;gap:8px;min-width:0}
-.dsan-cap textarea{flex:1;min-width:0;height:72px;min-height:72px;max-height:40vh;border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:vertical}
+.dsan-cap textarea{flex:1;min-width:0;height:72px;min-height:72px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:vertical}
 .dsan-cap textarea:focus{border-color:var(--dsw-alias-brand-primary)}
 .dsan-back{height:30px;padding:0 8px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;border-radius:7px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .dsan-back:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
@@ -181,7 +191,7 @@ window.__ModuleLoader__.load({
 .dsan-md th,.dsan-md td{border:1px solid var(--dsw-alias-border-l1);padding:5px 9px;text-align:left}
 .dsan-md th{background:var(--dsw-alias-bg-layer-2);font-weight:600}
 .dsan-md img{max-width:100%;max-height:420px;width:auto;height:auto;object-fit:contain;border-radius:6px;display:block;margin:8px 0}
-.dsan-editor{width:100%;min-height:60vh;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);color:inherit;font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;padding:14px 16px;outline:none;resize:vertical}
+.dsan-editor{width:100%;min-height:calc(60vh / var(--dsan-zoom, 1));border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);color:inherit;font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;padding:14px 16px;outline:none;resize:vertical}
 .dsan-save{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
 .dsan-conflict{border:1px solid var(--dsw-alias-state-warn-primary);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .dsan-cal{margin:0 auto;max-width:980px;display:flex;gap:22px}
@@ -205,7 +215,7 @@ window.__ModuleLoader__.load({
 .dsan-todo-pill{height:34px;padding:0 12px;border-radius:99px;border:1px solid rgba(255,255,255,.14);background:#1c2026;color:#f3f4f6;font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 6px 18px rgba(0,0,0,.28)}
 .dsan-todo-pill:hover{background:#262b33}
 .dsan-todo-pill .badge{min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--dsw-alias-state-error-primary);color:#fff;font-size:10.5px;line-height:17px;text-align:center;font-weight:700}
-.dsan-todo{position:sticky;top:12px;width:100%;box-shadow:0 12px 32px rgba(0,0,0,.2);border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) var(--dsan-todo-opacity, 100%), transparent);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 140px)}
+.dsan-todo{position:sticky;top:12px;width:100%;box-shadow:0 12px 32px rgba(0,0,0,.2);border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) var(--dsan-todo-opacity, 100%), transparent);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh / var(--dsan-zoom, 1) - 140px)}
 .dsan-todo-head{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--dsw-alias-border-l1);font-weight:600;font-size:12.5px}
 .dsan-todo-head .sp{flex:1}
 .dsan-todo-icon{width:24px;height:24px;padding:0;border:none;background:none;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-secondary);cursor:pointer;flex:none;line-height:1}
@@ -281,7 +291,7 @@ window.__ModuleLoader__.load({
 .dsan-sticky.colored .dsan-sticky-head{background:rgba(0,0,0,.06);color:rgba(31,36,48,.82)}
 .dsan-sticky.colored .dsan-sticky-head .dsan-btn{color:rgba(31,36,48,.82)}
 .dsan-sticky.colored .dsan-sticky-head .dsan-btn:hover{background:rgba(0,0,0,.08)}
-.dsan-reminder-stack{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;width:320px;max-width:calc(100vw - 32px)}
+.dsan-reminder-stack{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;width:320px;max-width:calc(100vw / var(--dsan-zoom, 1) - 32px)}
 .dsan-reminder-card{position:relative;overflow:hidden;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:12px 14px;animation:dsan-in .16s ease-out}
 .dsan-reminder-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.3;pointer-events:none}
 .dsan-reminder-content{position:relative;z-index:1}
@@ -294,7 +304,7 @@ window.__ModuleLoader__.load({
 .dsan-reminder-foot{display:flex;justify-content:flex-end;margin-top:10px}
 .dsan-reminder-stop{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-size:11.5px;padding:4px 9px;border-radius:6px;cursor:pointer}
 .dsan-reminder-stop:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
-.dsan-toasts{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:10px;z-index:80;width:360px;max-width:calc(100vw - 44px)}
+.dsan-toasts{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:10px;z-index:80;width:360px;max-width:calc(100vw / var(--dsan-zoom, 1) - 44px)}
 .dsan-toast{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:12px 13px;position:relative;animation:dsan-in .16s ease-out}
 @keyframes dsan-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .dsan-toast .tt{font-weight:600;font-size:12.5px;padding-right:4px}
@@ -305,7 +315,7 @@ window.__ModuleLoader__.load({
 .dsan-toast .x{position:static;flex:none;margin-left:auto;align-self:flex-end;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
 .dsan-toast .x:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
 .dsan-overlay{position:absolute;inset:0;background:rgba(0,0,0,.34);display:flex;align-items:center;justify-content:center;z-index:90;padding:24px}
-.dsan-modal{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.28);width:min(560px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.dsan-modal{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.28);width:min(560px,100%);max-height:calc(88vh / var(--dsan-zoom, 1));display:flex;flex-direction:column;overflow:hidden}
 .dsan-modal.wide{width:min(920px,100%)}
 .dsan-modal-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--dsw-alias-border-l1);font-weight:600}
 .dsan-modal-head .sp{flex:1}
@@ -324,7 +334,7 @@ window.__ModuleLoader__.load({
 .dsan-field input[type=checkbox],.dsan-field input[type=radio]{width:auto;height:auto;padding:0;margin:0;border:0;background:transparent;border-radius:0;flex:none;accent-color:var(--dsw-alias-brand-primary)}
 .dsan-field textarea{min-height:70px;resize:vertical}
 .dsan-panes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.dsan-pane{border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:10px;max-height:44vh;overflow:auto;font:12px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.dsan-pane{border:1px solid var(--dsw-alias-border-l1);border-radius:8px;padding:10px;max-height:calc(44vh / var(--dsan-zoom, 1));overflow:auto;font:12px/1.6 ui-monospace,Menlo,monospace;white-space:pre-wrap}
 .dsan-pane.add{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 10%, transparent)}
 .dsan-chip{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:1px 7px;border-radius:99px;margin-left:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);cursor:pointer;vertical-align:1px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
 .dsan-chip.running{color:var(--dsw-alias-state-idle-primary)}
@@ -931,7 +941,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 便笺
 
-    function StickyCard({ sticky, onSave, onDelete, onLayout, floating, onMinimize, canMinimize = true, onItems, onRaise }) {
+    function StickyCard({ sticky, onSave, onDelete, onLayout, floating, onMinimize, canMinimize = true, onItems, onRaise, scale = 1 }) {
       const [items, setItems] = useState(sticky.items || [])
       const [title, setTitle] = useState('')
       const [paletteOpen, setPaletteOpen] = useState(false)
@@ -949,6 +959,7 @@ window.__ModuleLoader__.load({
       }, [paletteOpen])
       const drag = useRef(null)
       const saveTimer = useRef(null)
+      const zoom = scale > 0 ? scale : 1
       const boxRef = useRef(null)
       const itemsRef = useRef(sticky.items || [])
       const draftRef = useRef('')
@@ -1018,8 +1029,8 @@ window.__ModuleLoader__.load({
         const move = (event) => {
           const state = drag.current
           if (!state) return
-          const dx = event.clientX - state.start.x
-          const dy = event.clientY - state.start.y
+          const dx = (event.clientX - state.start.x) / zoom
+          const dy = (event.clientY - state.start.y) / zoom
           if (state.kind === 'move') {
             onLayout(sticky.id, { x: Math.max(0, state.start.left + dx), y: Math.max(0, state.start.top + dy) })
           } else {
@@ -1045,7 +1056,7 @@ window.__ModuleLoader__.load({
         window.addEventListener('pointermove', move)
         window.addEventListener('pointerup', up)
         return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
-      }, [onLayout, sticky.id, sticky.x, sticky.y, sticky.w, sticky.h])
+      }, [onLayout, sticky.id, sticky.x, sticky.y, sticky.w, sticky.h, zoom])
 
       const tint = sticky.color || ''
       const colorStyle = tint ? { '--dsan-sticky-tint': tint, color: '#1f2430' } : {}
@@ -1537,6 +1548,7 @@ window.__ModuleLoader__.load({
           stickies.map((sticky) => h(StickyCard, {
             key: sticky.id, sticky, floating: false, canMinimize: false,
             onSave: refresh, onDelete: removeSticky, onLayout, onRaise: raiseSticky,
+            scale: uiScaleFactor(state),
           }))))
     }
 
@@ -2006,7 +2018,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 弹窗
 
-    function NotebookModal({ initial, onClose, onSaved, onDeleted, pushToast }) {
+    function NotebookModal({ initial, onClose, onSaved, onDeleted, pushToast, scale = 1 }) {
       const [draft, setDraft] = useState({
         name: initial?.name || '',
         description: initial?.description || '',
@@ -2149,7 +2161,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyCover })
+      if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyCover, zoomScale: scale })
 
       if (confirmDelete) {
         return h(Modal, {
@@ -2263,6 +2275,7 @@ window.__ModuleLoader__.load({
       }
 
       const [background, setBackground] = useState(state.homeBackground || '')
+      const [uiScale, setUiScale] = useState(normalizeUiScale(state.settings?.uiScale))
       const [cropFile, setCropFile] = useState(null)
       const configTimer = useRef(null)
       const patchSettings = (patch, after) => {
@@ -2356,7 +2369,7 @@ window.__ModuleLoader__.load({
           refresh()
         } catch (err) { pushToast?.({ title: '选目录失败', body: err.message }) }
       }
-      if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyBackground })
+      if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyBackground, zoomScale: uiScaleFactor(state) })
       const providerOptions = providers.slice()
       if (provider && !providerOptions.some((item) => item.id === provider)) providerOptions.unshift({ id: provider, name: provider })
       const modelOptions = models.slice()
@@ -2406,7 +2419,17 @@ window.__ModuleLoader__.load({
                   onChange: (event) => { const next = Number(event.target.value); setTodoTransparency(next); patchSoon({ todoTransparency: next }) },
                 }),
                 h('span', { style: { width: 38, textAlign: 'right', flex: 'none' } }, `${todoTransparency}%`)),
-              h('div', { className: 'dsan-set-hint' }, '0% 不透明，100% 完全透明。只改卡片底色，不影响文字和条目悬停。')))),
+              h('div', { className: 'dsan-set-hint' }, '0% 不透明，100% 完全透明。只改卡片底色，不影响文字和条目悬停。')),
+            h('div', { className: 'dsan-set-row' },
+              h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 } },
+                h('span', { style: { width: 120, flex: 'none' } }, '视觉放大'),
+                h('input', {
+                  type: 'range', min: 100, max: 200, step: 50, value: uiScale,
+                  style: { flex: 1, accentColor: 'var(--dsw-alias-brand-primary)' },
+                  onChange: (event) => { const next = normalizeUiScale(event.target.value); setUiScale(next); patchSettings({ uiScale: next }) },
+                }),
+                h('span', { style: { width: 46, textAlign: 'right', flex: 'none' } }, `${uiScale}%`)),
+              h('div', { className: 'dsan-set-hint' }, '整页放大：界面各区域尺寸和所有字号一起缩放。三档 100%、150%、200%，默认 100%。')))),
 
 
         h(SettingsSection, { title: '快捷记录', desc: '顶部输入框把内容写进今日日记，再按需归档到主题笔记。' },
@@ -2654,7 +2677,7 @@ window.__ModuleLoader__.load({
           .catch((err) => pushToast?.({ title: '日记背景没存上', body: err.message }))
       }
       const clear = () => api('diary.clearCover').then(() => { setCover(''); refresh() }).catch(() => { })
-      if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyCover })
+      if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyCover, zoomScale: uiScaleFactor(state) })
       return h(Modal, {
         title: '日记本管理', onClose,
       },
@@ -2673,11 +2696,12 @@ window.__ModuleLoader__.load({
         h('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-secondary)' } }, '背景会以浅透明的方式铺在日记页面和日记卡片上。'))
     }
 
-    function ImageCropper({ file, onCancel, onDone }) {
+    function ImageCropper({ file, onCancel, onDone, zoomScale = 1 }) {
       const [src, setSrc] = useState('')
       const [natural, setNatural] = useState({ w: 0, h: 0 })
       const [crop, setCrop] = useState(null)
       const drag = useRef(null)
+      const zoom = zoomScale > 0 ? zoomScale : 1
       const imgRef = useRef(null)
       const stageRef = useRef(null)
       const W = 360
@@ -2722,8 +2746,8 @@ window.__ModuleLoader__.load({
       }
       const move = (event) => {
         if (!drag.current || !crop) return
-        const dx = event.clientX - drag.current.x
-        const dy = event.clientY - drag.current.y
+        const dx = (event.clientX - drag.current.x) / zoom
+        const dy = (event.clientY - drag.current.y) / zoom
         const base = drag.current.rect
         const mode = drag.current.mode
         let x = base.x
@@ -3060,7 +3084,8 @@ window.__ModuleLoader__.load({
       const bumpContent = () => setContentNonce((n) => n + 1)
       const [fabBottom, setFabBottom] = useState(() => {
         if (Number.isFinite(legacyUi.fabBottom)) return legacyUi.fabBottom
-        return typeof window !== 'undefined' ? Math.round((window.innerHeight || 800) * 0.2) : 160
+        const factor = normalizeUiScale(state?.settings?.uiScale) / 100
+        return typeof window !== 'undefined' ? Math.round((window.innerHeight || 800) / factor * 0.2) : 160
       })
       const uiHydrated = useRef(false)
       const fabDrag = useRef(null)
@@ -3261,7 +3286,7 @@ window.__ModuleLoader__.load({
         uiHydrated.current = true
         const ui = state.ui || {}
         const patch = {}
-        const viewportHeight = (typeof window !== 'undefined' ? window.innerHeight : 800) || 800
+        const viewportHeight = ((typeof window !== 'undefined' ? window.innerHeight : 800) || 800) / uiScale
         const maxBottom = Math.max(70, viewportHeight - 80)
         const clampBottom = (value) => Math.round(Math.max(70, Math.min(maxBottom, Number(value))))
         if (Number.isFinite(ui.fabBottom) && ui.fabBottom > 0) setFabBottom(clampBottom(ui.fabBottom))
@@ -3893,8 +3918,9 @@ window.__ModuleLoader__.load({
       }
 
       const stickySpawnPosition = (useScroll = true) => {
-        const vh = window.innerHeight || 800
-        const vw = window.innerWidth || 1200
+        // 便笺的坐标是 zoom 之后的内部像素，可视区域要按缩放折算。
+        const vh = (window.innerHeight || 800) / uiScale
+        const vw = (window.innerWidth || 1200) / uiScale
         const scrollTop = useScroll ? (document.querySelector('.dsan-body')?.scrollTop || 0) : 0
         const topOffset = 110
         const minY = Math.max(40, Math.round(vh * 0.42) - topOffset)
@@ -3918,9 +3944,9 @@ window.__ModuleLoader__.load({
       }
       const fabMove = (event) => {
         if (!fabDrag.current) return
-        const dy = event.clientY - fabDrag.current.startY
+        const dy = (event.clientY - fabDrag.current.startY) / uiScale
         if (Math.abs(dy) > 4) fabMoved.current = true
-        const next = Math.max(70, Math.min((window.innerHeight || 800) - 80, fabDrag.current.startBottom - dy))
+        const next = Math.max(70, Math.min((window.innerHeight || 800) / uiScale - 80, fabDrag.current.startBottom - dy))
         fabDrag.current.nextBottom = next
         setFabBottom(next)
       }
@@ -4036,11 +4062,14 @@ window.__ModuleLoader__.load({
         ? Number(state.settings.stickyTransparency)
         : (Number.isFinite(Number(state.settings?.stickyOpacity)) ? 100 - Number(state.settings.stickyOpacity) : 55)
       const todoTransparencyValue = Number.isFinite(Number(state.settings?.todoTransparency)) ? Number(state.settings.todoTransparency) : 36
+      const uiScale = uiScaleFactor(state)
       return h('div', {
         className: 'dsan',
         style: {
           '--dsan-sticky-opacity': `${100 - Math.max(0, Math.min(100, stickyTransparencyValue))}%`,
           '--dsan-todo-opacity': `${100 - Math.max(0, Math.min(100, todoTransparencyValue))}%`,
+          '--dsan-zoom': String(uiScale),
+          zoom: String(uiScale),
         },
       },
         styleTag(),
@@ -4179,6 +4208,7 @@ window.__ModuleLoader__.load({
             onMinimize: () => {
               api('sticky.save', { id: floatingSticky.id, minimized: true }).then(() => { setPageMinSticky(floatingSticky); setPageSticky(null) })
             },
+            scale: uiScale,
           })) : null,
         h('div', { className: 'dsan-surface-stack dsan-unified-stack' }, ...[
           ...toasts.map((toast) => ({ at: toast.at || 0, node: h(ToastCard, { key: toast.id, toast, dismiss }) })),
@@ -4192,13 +4222,14 @@ window.__ModuleLoader__.load({
             onAutoClose: () => closeReminderCard(reminder),
             onStopPeriodic: () => stopPeriodicReminder(reminder),
           }))) : null,
-        modal?.kind === 'newNotebook' ? h(NotebookModal, { onClose: () => setModal(null), pushToast, refresh }) : null,
+        modal?.kind === 'newNotebook' ? h(NotebookModal, { onClose: () => setModal(null), pushToast, refresh, scale: uiScale }) : null,
         modal?.kind === 'editNotebook' ? h(NotebookModal, {
           initial: modal.notebook,
           onClose: () => setModal(null),
           onSaved: (notebook) => { if (notebook?.name) setView({ kind: 'notebook', name: notebook.name }); refresh() },
           onDeleted: () => { setModal(null); setView({ kind: 'home' }); refresh() },
           pushToast,
+          scale: uiScale,
         }) : null,
         ...surfaces.filter((surface) => surface.type !== 'toast').map(renderSurface),
         agentReplyOpen && agentThread ? h(AgentReplyModal, {
@@ -4211,7 +4242,7 @@ window.__ModuleLoader__.load({
         }) : null,
         agentSessionOpen ? h(Modal, { title: 'agent 会话', wide: true, onClose: () => setAgentSessionOpen(false) },
           h('div', { style: { display: 'flex', gap: 12, minHeight: 240 } },
-            h('div', { style: { width: 230, flex: 'none', minWidth: 0, borderRight: '1px solid var(--dsw-alias-border-l2)', paddingRight: 10, overflowY: 'auto', overflowX: 'hidden', maxHeight: '62vh' } },
+            h('div', { style: { width: 230, flex: 'none', minWidth: 0, borderRight: '1px solid var(--dsw-alias-border-l2)', paddingRight: 10, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(62vh / var(--dsan-zoom, 1))' } },
               ...(agentSessionList.length ? agentSessionList.map((session) => h('button', {
                 key: session.id, type: 'button', className: 'dsan-btn small',
                 style: { display: 'block', width: '100%', maxWidth: '100%', boxSizing: 'border-box', height: 'auto', minHeight: 0, padding: '8px 10px', lineHeight: 1.35, textAlign: 'left', marginBottom: 8, opacity: agentSessionDetail?.id === session.id ? 1 : .72, overflow: 'hidden' },
@@ -4221,7 +4252,7 @@ window.__ModuleLoader__.load({
                   h('div', { style: { fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 } }, fmtReminderTime(session.updatedAt) || '未知时间'),
                   h('span', { title: session.status || 'unknown', style: { width: 7, height: 7, borderRadius: '50%', flex: 'none', background: session.status === 'done' ? '#3fb950' : session.status === 'running' ? '#58a6ff' : session.status === 'waiting' ? '#d29922' : session.status === 'error' ? '#f85149' : '#8b949e' } })),
                 h('div', { style: { fontSize: 10, opacity: .45, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, String(session.title || '未命名会话').split(/\r?\n/)[0].replace(/^\/agent\s*/, '').trim() || '未命名会话'))) : [h('div', { className: 'dsan-set-hint' }, '还没有 agent 会话')])),
-            h('div', { style: { flex: 1, overflow: 'auto', maxHeight: '62vh' } },
+            h('div', { style: { flex: 1, overflow: 'auto', maxHeight: 'calc(62vh / var(--dsan-zoom, 1))' } },
               agentSessionDetail ? [
                 h('div', { style: { fontWeight: 600, marginBottom: 8 } }, agentSessionDetail.args?.instruction || 'agent 会话'),
                 h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, `状态：${agentSessionDetail.status || ''} · 更新：${String(agentSessionDetail.updatedAt || '').slice(0, 19).replace('T', ' ')}`),
