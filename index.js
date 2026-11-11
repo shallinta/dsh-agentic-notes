@@ -297,8 +297,8 @@ const DEFAULT_CONFIG = {
   uiScale: 100,
 }
 
-// 视觉放大只提供三档，写进配置的值一律按这三个值归一。
-const UI_SCALE_STEPS = [100, 150, 200]
+// 视觉放大只提供这几档，写进配置的值一律按这一组归一。
+const UI_SCALE_STEPS = [100, 125, 150, 175, 200]
 
 function normalizeUiScale(value) {
   const n = Math.round(Number(value))
@@ -3283,7 +3283,7 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
               const min = key === 'reminderSoundVolume' || key === 'reminderSpeechVolume' ? 1 : 0
               patch[key] = Math.max(min, Math.min(100, Math.round(n)))
             } else if (key === 'uiScale') {
-              if (!UI_SCALE_STEPS.includes(Number(value))) throw new Error('uiScale 只能是 100、150 或 200')
+              if (!UI_SCALE_STEPS.includes(Number(value))) throw new Error('uiScale 只能是 100、125、150、175 或 200')
               patch[key] = Number(value)
             } else if (key === 'model') {
               if (value === null) patch.model = null
@@ -3524,7 +3524,7 @@ async function runAgent(ctx, root, manifest, args, shouldCancel = null) {
     '{"op":"fileMove","from":"旧的相对路径","to":"新的相对路径"}',
     '{"op":"fileCopy","from":"旧的相对路径","to":"新的相对路径"}',
     '{"op":"fileDelete","path":"相对路径","confirmed":true}',
-    'settingsUpdate 可改的设置项：autoArchive、calendar（single/double）、trashDays（1-365）、captureHistory（1-50）、reactMaxRounds（1-50）、systemNotifications、reminderSound、reminderSpeech、reminderVoiceGender（auto/male/female）、reminderSoundVolume（1-100）、reminderSpeechVolume（1-100）、stickyTransparency（0-100）、todoTransparency（0-100）、uiScale（100/150/200）、model（null 或 {provider, model}）。homeBackground 和 reminderSoundFile 只能填空字符串恢复默认。root 不能在 /agent 里修改。',
+    'settingsUpdate 可改的设置项：autoArchive、calendar（single/double）、trashDays（1-365）、captureHistory（1-50）、reactMaxRounds（1-50）、systemNotifications、reminderSound、reminderSpeech、reminderVoiceGender（auto/male/female）、reminderSoundVolume（1-100）、reminderSpeechVolume（1-100）、stickyTransparency（0-100）、todoTransparency（0-100）、uiScale（100/125/150/175/200）、model（null 或 {provider, model}）。homeBackground 和 reminderSoundFile 只能填空字符串恢复默认。root 不能在 /agent 里修改。',
     '路径必须来自给定文件；write 的 content 必须完整；operation 不超过 50 条。',
     'fileMove/fileCopy 只处理非 Markdown 文件（图片等附件），目标已存在时拒绝覆盖。移动图片后，若 Markdown 里的引用文件名发生变化，要用 write 同步修改引用。',
     '改写笔记时必须保留原文中的所有图片引用（Markdown 图片语法和 HTML img）。除非用户在上一轮明确确认删除某张图，否则不得删除或改写图片引用；否则宿主会拒绝这次 write。',

@@ -23,8 +23,8 @@ window.__ModuleLoader__.load({
       { name: 'agent', desc: '让 AI 整理' },
     ]
 
-    // 视觉放大：三档。100% 不缩放，200% 时所有尺寸和字号翻倍。
-    const UI_SCALE_STEPS = [100, 150, 200]
+    // 视觉放大：五档。100% 不缩放，200% 时所有尺寸和字号翻倍。
+    const UI_SCALE_STEPS = [100, 125, 150, 175, 200]
     function normalizeUiScale(value) {
       const n = Math.round(Number(value))
       return UI_SCALE_STEPS.includes(n) ? n : 100
@@ -80,7 +80,7 @@ window.__ModuleLoader__.load({
 .dsan-preview-img{display:block;max-width:100%;max-height:calc(72vh / var(--dsan-zoom, 1));object-fit:contain;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.22)}
 .dsan-attachment .num{position:absolute;left:2px;bottom:2px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;line-height:16px;text-align:center;font-weight:600}
 .dsan-attachment .rm{position:absolute;right:-8px;top:-8px;width:16px;height:16px;border:1px solid var(--dsw-alias-bg-base);border-radius:50%;background:rgba(0,0,0,.78);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
-.dsan-capture-field{position:relative;flex:1;min-width:0;display:flex}.dsan-capture-input{flex:1;min-width:0;width:100%;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;overflow:hidden;transition:height .18s ease}.dsan-capture-input.open{overflow-y:auto}.dsan-capture-ph{position:absolute;left:12px;right:12px;top:8px;line-height:1.5;font:inherit;color:var(--dsw-alias-label-secondary);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}.dsan-slash-menu{position:absolute;left:22px;top:calc(100% - 4px);z-index:60;min-width:210px;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.22);padding:5px;display:flex;flex-direction:column;gap:2px}.dsan-slash-item{display:flex;align-items:center;gap:10px;padding:6px 9px;border:none;background:none;color:inherit;font:inherit;text-align:left;border-radius:7px;cursor:pointer;white-space:nowrap}.dsan-slash-item:hover{background:var(--dsw-alias-bg-layer-2)}.dsan-slash-item .nm{font-weight:600;font-size:12px}.dsan-slash-item .ds{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
+.dsan-capture-field{position:relative;flex:1;min-width:0;display:flex}.dsan-capture-input{flex:1;min-width:0;width:100%;height:38px;min-height:38px;max-height:calc(40vh / var(--dsan-zoom, 1));border-radius:9px;border:1px solid var(--dsw-alias-border-l2);background:transparent;padding:8px 12px;color:inherit;outline:none;font:inherit;line-height:1.5;resize:none;overflow:hidden;transition:height .18s ease}.dsan-capture-input.open{overflow-y:auto}.dsan-capture-ph{position:absolute;left:12px;right:12px;top:8px;line-height:1.5;font:inherit;color:var(--dsw-alias-label-secondary);opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}.dsan-slash-menu{position:absolute;left:22px;top:calc(100% - 4px);z-index:60;min-width:210px;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.22);padding:5px;display:flex;flex-direction:column;gap:2px}.dsan-slash-item{display:flex;align-items:center;gap:10px;padding:6px 9px;border:none;background:none;color:inherit;font:inherit;text-align:left;border-radius:7px;cursor:pointer;white-space:nowrap}.dsan-slash-item:hover,.dsan-slash-item.active{background:var(--dsw-alias-bg-layer-2)}.dsan-slash-item .nm{font-weight:600;font-size:12px}.dsan-slash-item .ds{font-size:11.5px;color:var(--dsw-alias-label-secondary)}
 .dsan-capture-input.open{height:78px}
 .dsan-capture-input:focus{border-color:var(--dsw-alias-brand-primary)}
 .dsan-subbar{display:flex;align-items:center;gap:8px;padding:5px 22px;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none;font-size:12px;color:var(--dsw-alias-label-secondary);position:relative;z-index:2;min-width:0;flex-wrap:nowrap}
@@ -1340,8 +1340,8 @@ window.__ModuleLoader__.load({
         window.addEventListener('resize', update)
         return () => { observer?.disconnect(); window.removeEventListener('resize', update) }
       }, [])
-      // 待办卡片展开时右侧让出 336px，便笺跟着左移，避免被卡片盖住。
-      const areaW = todoOpen ? Math.max(160, wrapSize.w - 336) : wrapSize.w
+      // 便笺不随待办卡片移动；卡片层级更高，展开时压在便笺上面。
+      const areaW = wrapSize.w
       const areaH = wrapSize.h
       const stickies = (state.stickies || []).filter((sticky) => !hiddenStickies.includes(sticky.id)).map((sticky) => {
         const local = dragState[sticky.id] || {}
@@ -2442,12 +2442,12 @@ window.__ModuleLoader__.load({
               h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 } },
                 h('span', { style: { width: 120, flex: 'none' } }, '视觉放大'),
                 h('input', {
-                  type: 'range', min: 100, max: 200, step: 50, value: uiScale,
+                  type: 'range', min: 100, max: 200, step: 25, value: uiScale,
                   style: { flex: 1, accentColor: 'var(--dsw-alias-brand-primary)' },
                   onChange: (event) => { const next = normalizeUiScale(event.target.value); setUiScale(next); patchSettings({ uiScale: next }) },
                 }),
                 h('span', { style: { width: 46, textAlign: 'right', flex: 'none' } }, `${uiScale}%`)),
-              h('div', { className: 'dsan-set-hint' }, '整页放大：界面各区域尺寸和所有字号一起缩放。三档 100%、150%、200%，默认 100%。')))),
+              h('div', { className: 'dsan-set-hint' }, '整页放大：界面各区域尺寸和所有字号一起缩放。五档 100%、125%、150%、175%、200%，默认 100%。')))),
 
 
         h(SettingsSection, { title: '快捷记录', desc: '顶部输入框把内容写进今日日记，再按需归档到主题笔记。' },
@@ -2974,7 +2974,20 @@ window.__ModuleLoader__.load({
       const [toasts, setToasts] = useState(readSavedToasts)
       const [modal, setModal] = useState(null)
       const [captureText, setCaptureText] = useState('')
+      const [slashIndex, setSlashIndex] = useState(0)
       const captureRef = useRef(null)
+      // 命令名打全了就不再弹提示；只匹配到唯一一个且已经完整时收起。
+      const slashTyped = (() => {
+        const m = /^\/([a-zA-Z]*)$/.exec(captureText.trim())
+        return m ? m[1].toLowerCase() : null
+      })()
+      const slashChoices = (() => {
+        if (slashTyped === null) return []
+        const list = SLASH_COMMANDS.filter((cmd) => cmd.name.startsWith(slashTyped))
+        return (list.length === 1 && list[0].name === slashTyped) ? [] : list
+      })()
+      const slashActive = slashChoices.length ? Math.min(slashIndex, slashChoices.length - 1) : 0
+      useEffect(() => { setSlashIndex(0) }, [slashTyped])
       const [captureImages, setCaptureImages] = useState([])
       const [previewImage, setPreviewImage] = useState(null)
       const [agentThread, setAgentThread] = useState(readSavedAgentThread)
@@ -4081,10 +4094,6 @@ window.__ModuleLoader__.load({
         : (Number.isFinite(Number(state.settings?.stickyOpacity)) ? 100 - Number(state.settings.stickyOpacity) : 55)
       const todoTransparencyValue = Number.isFinite(Number(state.settings?.todoTransparency)) ? Number(state.settings.todoTransparency) : 36
       const uiScale = uiScaleFactor(state)
-      const slashQuery = /^\/([a-zA-Z]*)$/.exec(captureText.trim())
-      const slashChoices = slashQuery
-        ? SLASH_COMMANDS.filter((cmd) => cmd.name.startsWith(slashQuery[1].toLowerCase()))
-        : []
       return h('div', {
         className: 'dsan',
         style: {
@@ -4142,10 +4151,24 @@ window.__ModuleLoader__.load({
               },
               onKeyDown: (event) => {
                 if (event.nativeEvent.isComposing) return
-                if ((event.key === 'Enter' || event.key === 'Tab') && slashChoices.length) {
-                  event.preventDefault()
-                  setCaptureText(`/${slashChoices[0].name} `)
-                  return
+                if (slashChoices.length) {
+                  const count = slashChoices.length
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    setSlashIndex((slashActive + 1) % count)
+                    return
+                  }
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    setSlashIndex((slashActive - 1 + count) % count)
+                    return
+                  }
+                  if (event.key === 'Enter' || event.key === 'Tab' || event.key === ' ') {
+                    event.preventDefault()
+                    setCaptureText(`/${slashChoices[slashActive].name} `)
+                    setSlashIndex(0)
+                    return
+                  }
                 }
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault()
@@ -4177,8 +4200,9 @@ window.__ModuleLoader__.load({
             }, '随手记一条，回车存档；可粘贴图片；输入 / 查看命令')),
             h('button', { className: 'dsan-btn primary', onClick: submitCapture }, '随记')),
           slashChoices.length ? h('div', { className: 'dsan-slash-menu' },
-            slashChoices.map((cmd) => h('button', {
-              key: cmd.name, type: 'button', className: 'dsan-slash-item',
+            slashChoices.map((cmd, index) => h('button', {
+              key: cmd.name, type: 'button', className: cls('dsan-slash-item', index === slashActive && 'active'),
+              onMouseEnter: () => setSlashIndex(index),
               onMouseDown: (event) => event.preventDefault(),
               onClick: () => { setCaptureText(`/${cmd.name} `); captureRef.current?.focus() },
             },
