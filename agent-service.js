@@ -3,7 +3,7 @@
 // context, UI state, or transport.
 
 const METHODS = [
-  'listNotebooks', 'listNotes', 'readNote', 'readTodo', 'readStickies', 'readSettings', 'webFetch',
+  'listNotebooks', 'updateNotebook', 'listNotes', 'readNote', 'readTodo', 'readStickies', 'readSettings', 'webFetch',
   'createNote', 'writeNote', 'renameNote', 'moveNote', 'deleteNote', 'updateFrontmatter',
   'todoAdd', 'todoUpdate', 'todoDelete', 'memoCreate', 'memoUpdate', 'memoDelete',
   'settingsUpdate', 'setPrivacy', 'stageOperations', 'applyOperations',

@@ -178,7 +178,7 @@ window.__ModuleLoader__.load({
 .dsan-notebook-page{isolation:isolate}
 .dsan-notebook-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.13;pointer-events:none;z-index:-1;border-radius:12px}
 .dsan-note-page{max-width:840px}
-.dsan-note-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.dsan-note-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;flex-wrap:wrap}.dsan-taginput{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:34px;padding:5px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-1)}.dsan-taginput:focus-within{border-color:var(--dsw-alias-brand-primary)}.dsan-taginput-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);font-size:11.5px;line-height:1.5;white-space:nowrap}.dsan-taginput-chip .x{border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1;padding:0}.dsan-taginput input{flex:1;min-width:90px;border:none;background:transparent;color:inherit;outline:none;font:inherit;padding:2px 0}
 .dsan-note-title{font-size:22px;font-weight:600;margin:0;flex:1;min-width:200px;overflow:hidden;text-overflow:ellipsis}
 .dsan-md{line-height:1.75;overflow-wrap:break-word}
 .dsan-md h1{font-size:24px;margin:26px 0 12px;font-weight:600}
@@ -2036,11 +2036,43 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 弹窗
 
+    function TagInput({ value, onChange, placeholder = '', onCommit }) {
+      const [text, setText] = useState('')
+      const tags = Array.isArray(value) ? value : []
+      const commit = () => {
+        const parts = String(text).split(/[,，\s]+/).map((item) => item.trim()).filter(Boolean)
+        if (!parts.length) { setText(''); return }
+        const next = [...new Set([...tags, ...parts])]
+        setText('')
+        onChange(next)
+        onCommit?.(next)
+      }
+      return h('div', { className: 'dsan-taginput' },
+        tags.map((tag, index) => h('span', { key: `${tag}-${index}`, className: 'dsan-taginput-chip' },
+          tag,
+          h('button', {
+            type: 'button', className: 'x', 'aria-label': `移除 ${tag}`,
+            onClick: () => { const next = tags.filter((_, i) => i !== index); onChange(next); onCommit?.(next) },
+          }, '×'))),
+        h('input', {
+          value: text,
+          placeholder: tags.length ? '' : placeholder,
+          onChange: (event) => setText(event.target.value),
+          onKeyDown: (event) => {
+            if (event.key === 'Enter' || event.key === ',' || event.key === '，') { event.preventDefault(); commit() }
+            else if (event.key === 'Backspace' && !text && tags.length) { const next = tags.slice(0, -1); onChange(next); onCommit?.(next) }
+          },
+          onBlur: commit,
+        }))
+    }
+
     function NotebookModal({ initial, onClose, onSaved, onDeleted, pushToast, scale = 1 }) {
       const [draft, setDraft] = useState({
         name: initial?.name || '',
         description: initial?.description || '',
-        keywords: (initial?.keywords || []).join('，'),
+        keywords: Array.isArray(initial?.keywords) ? initial.keywords : [],
+        agentRules: initial?.agentRules || '',
+        manualRules: initial?.manualRules || '',
         private: initial?.private === true,
       })
       const draftRef = useRef(draft)
@@ -2074,6 +2106,8 @@ window.__ModuleLoader__.load({
               name: nextName,
               description: value.description,
               keywords: value.keywords,
+              agentRules: value.agentRules,
+              manualRules: value.manualRules,
               private: value.private,
             })
             currentName.current = res.notebook.name
@@ -2090,6 +2124,8 @@ window.__ModuleLoader__.load({
               nextName,
               description: value.description,
               keywords: value.keywords,
+              agentRules: value.agentRules,
+              manualRules: value.manualRules,
               private: value.private,
             })
             currentName.current = res.notebook.name
@@ -2168,6 +2204,8 @@ window.__ModuleLoader__.load({
                   name,
                   description: draftRef.current.description,
                   keywords: draftRef.current.keywords,
+                  agentRules: draftRef.current.agentRules,
+                  manualRules: draftRef.current.manualRules,
                   private: draftRef.current.private,
                 }))
                 .then(() => onSaved?.(null))
@@ -2224,12 +2262,26 @@ window.__ModuleLoader__.load({
           onBlur: saveNow,
           placeholder: '这本收什么，模型靠它判断归属',
         })),
-        h(Field, { label: '关键词（选填，用逗号分隔）' }, h('input', {
+        h(Field, { label: '关键词（选填）' }, h(TagInput, {
           value: draft.keywords,
-          onChange: (event) => update('keywords', event.target.value),
-          onBlur: saveNow,
-          placeholder: '手冲，豆子，器具',
+          onChange: (next) => update('keywords', next),
+          onCommit: () => saveNow(),
+          placeholder: '输入后回车，或用逗号分隔',
         })),
+        h(Field, { label: '笔记本维护规则（Agent 自动更新）' }, h('textarea', {
+          value: draft.agentRules,
+          onChange: (event) => update('agentRules', event.target.value),
+          onBlur: saveNow,
+          placeholder: '例如：新记录先看有没有同主题小节；标签沿用已有词；保留原话。',
+        })),
+        h('div', { className: 'dsan-set-hint' }, '/agent 每次操作这本笔记本前都会先读这条规则，有值得沉淀的经验时它会自己补充；你也可以直接改。'),
+        h(Field, { label: '笔记本维护规则（仅人工更新）' }, h('textarea', {
+          value: draft.manualRules,
+          onChange: (event) => update('manualRules', event.target.value),
+          onBlur: saveNow,
+          placeholder: '例如：不要动「参考」小节；改写前必须先问我。',
+        })),
+        h('div', { className: 'dsan-set-hint' }, '这条只有你能改，/agent 和 MCP 只能读、不能写。'),
         savedName ? h('div', { className: 'dsan-notebook-delete' },
           h('button', { className: 'dsan-btn danger', onClick: () => setConfirmDelete(true) }, '删除笔记本')) : null)
     }

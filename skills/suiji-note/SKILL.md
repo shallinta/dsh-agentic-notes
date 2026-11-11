@@ -71,6 +71,7 @@ http://127.0.0.1:53152/dsh-agentic-notes/mcp
 - `update_frontmatter`
 - `todo_add` / `todo_update` / `todo_delete`
 - `memo_create` / `memo_update` / `memo_delete`
+- `update_notebook`：改笔记本的名称、描述、关键词和「Agent 自动更新」规则；「仅人工更新」规则只读
 
 ## 写入规则：必须先审查再确认
 
@@ -83,6 +84,7 @@ http://127.0.0.1:53152/dsh-agentic-notes/mcp
 
 - 目标笔记当前内容
 - 目标笔记本里的相关标题
+- 目标笔记本的 `agentRules` 与 `manualRules`（都来自 `list_notebooks`），并照着执行；`manualRules` 不要尝试修改
 - 待办或便笺的当前状态
 
 ### 第二步：向用户展示改动

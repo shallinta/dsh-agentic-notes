@@ -6,6 +6,17 @@ const string = (description) => ({ type: 'string', description })
 
 export const nativeAgentToolSchemas = [
   { name: 'list_notebooks', description: '列出当前笔记库的笔记本。', parameters: object({}) },
+  {
+    name: 'update_notebook',
+    description: '修改笔记本的名称、描述、关键词或 Agent 维护规则。动手前先阅读 list_notebooks 返回的 agentRules 与 manualRules 并遵守；manualRules 只能由用户修改。',
+    parameters: object({
+      notebook: string('笔记本名称'),
+      nextName: string('可选的新名称'),
+      description: string('可选的新描述'),
+      keywords: { type: 'array', items: { type: 'string' }, description: '可选的新关键词列表' },
+      agentRules: string('可选，Agent 自动维护规则的完整新内容'),
+    }, ['notebook']),
+  },
   { name: 'list_notes', description: '列出某个笔记本里的笔记。', parameters: object({ notebook: string('笔记本名称') }, ['notebook']) },
   { name: 'read_note', description: '读取一篇笔记的 Markdown 内容。', parameters: object({ path: string('相对根目录的笔记路径') }, ['path']) },
   { name: 'read_todo', description: '读取待办列表。', parameters: object({}) },
@@ -66,6 +77,7 @@ export function createNativeToolExecutor(service) {
     const handlers = {
       list_notebooks: () => call('listNotebooks', args),
       list_notes: () => call('listNotes', args),
+      update_notebook: () => call('updateNotebook', args),
       read_note: () => call('readNote', args),
       read_todo: () => call('readTodo', args),
       read_stickies: () => call('readStickies', args),

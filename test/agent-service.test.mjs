@@ -14,5 +14,5 @@ test('service delegates arguments', async () => {
 })
 
 test('service exposes the executor contract', () => {
-  assert.equal(agentServiceMethods.length, 26)
+  assert.equal(agentServiceMethods.length, 27)
 })
