@@ -3460,6 +3460,81 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
   })
 }
 
+
+// 任务结束后给整本/多本笔记本沉淀「下次怎么做」的维护规则。
+// 只在确实动过笔记本时运行，单篇笔记的内部修改不触发。
+async function distillNotebookRules(ctx, root, { instruction = '', operations = [], view = '' } = {}) {
+  try {
+    const ops = Array.isArray(operations) ? operations.filter((op) => op && typeof op === 'object') : []
+    if (!ops.length) return []
+    if (!ctx?.get?.('llm')) return []
+    const touched = new Set()
+    for (const op of ops) {
+      if (op.notebook) touched.add(safeName(op.notebook || '', ''))
+      if (op.title && ['updateNotebook', 'renameNotebook'].includes(String(op.op || ''))) touched.add(safeName(String(op.title), ''))
+      for (const field of ['path', 'from', 'to']) {
+        if (op[field]) touched.add(String(op[field]).split('/')[0])
+      }
+    }
+    const manifest = readManifest(root)
+    const books = [...touched]
+      .map((name) => manifest.notebooks.find((item) => item.name === name))
+      .filter(Boolean)
+      .slice(0, 3)
+    if (!books.length) return []
+    const notePaths = new Set(ops.map((op) => op.path).filter(Boolean))
+    const structuralOps = new Set(['create', 'rename', 'move', 'delete', 'renameNotebook', 'deleteNotebook', 'reorderNotes', 'reorderNotebooks', 'updateNotebook'])
+    const notebookScoped = view === 'home' || view === 'notebook'
+    if (!notebookScoped && !ops.some((op) => structuralOps.has(String(op.op || ''))) && notePaths.size < 2) return []
+    const opLines = ops.slice(0, 30).map((op) => `- ${formatAgentOperationSummary(op)}`)
+    const system = [
+      '你在给随记的笔记本沉淀「维护规则」：写给以后 Agent 看的操作约定。',
+      '只输出一个 JSON 对象：{"updates":[{"notebook":"笔记本名","agentRules":"完整的规则文本"}]}，没有值得沉淀的就输出 {"updates":[]}。',
+      '规则写的是「下次更新这本笔记本及其笔记时该怎么做」：命名、段落结构、标签用法、追加还是改写、保留什么、禁止什么、什么情况先问用户。',
+      '不要写这次改了什么，不要写一次性事实，不要复述笔记本描述或关键词，不要点名具体笔记。',
+      'manualRules 是仅人工维护的约束，优先级最高：新规则不得与它冲突，也不得削弱或绕开它。',
+      '每本的规则尽量短，不超过 600 字；没有新规律就跳过这本。',
+    ].join('\n')
+    const user = [
+      `用户这次的指令：${instruction || '（无）'}`,
+      '这次执行的操作：',
+      ...(opLines.length ? opLines : ['- （无）']),
+      '',
+      '涉及的笔记本：',
+      ...books.map((book) => [
+        `### ${book.name}`,
+        `描述：${book.description || '（空）'}`,
+        `关键词：${(book.keywords || []).join('、') || '（空）'}`,
+        `现有 agentRules：${book.agentRules || '（空）'}`,
+        `manualRules：${book.manualRules || '（空）'}`,
+      ].join('\n')),
+      '',
+      '要更新的笔记本，把现有 agentRules 和这次的新经验合并成完整文本返回。',
+    ].join('\n')
+    let parsed = null
+    try { parsed = parseJsonReply(await callModel(ctx, root, system, user, 1400, 60000)) } catch { parsed = null }
+    const updates = Array.isArray(parsed?.updates) ? parsed.updates : []
+    const updated = []
+    for (const item of updates) {
+      const name = safeName(String(item?.notebook || ''), '')
+      const next = typeof item?.agentRules === 'string' ? item.agentRules.trim() : ''
+      if (!name || !next) continue
+      const book = books.find((entry) => entry.name === name)
+      if (!book) continue
+      if (next === String(book.agentRules || '').trim()) continue
+      const fresh = readManifest(root)
+      const entry = fresh.notebooks.find((candidate) => candidate.name === name)
+      if (!entry) continue
+      entry.agentRules = next.slice(0, 2000)
+      saveManifest(root, fresh)
+      updated.push(name)
+    }
+    return updated
+  } catch {
+    return []
+  }
+}
+
 function normalizeAgentOptions(value) {
   return (Array.isArray(value) ? value : []).slice(0, 6).map((item, index) => {
     const id = String(item?.id || String.fromCharCode(65 + index)).slice(0, 12)
@@ -3687,6 +3762,7 @@ async function runAgent(ctx, root, manifest, args, shouldCancel = null) {
       summary: summarizeOperations(operations),
       signature: baseSignature,
       operations,
+      distillScope: { view: context.view || 'home' },
     }
     writeJson(path.join(pendingDir(root), `${id}.json`), pending)
     return {
@@ -3707,7 +3783,11 @@ async function runAgent(ctx, root, manifest, args, shouldCancel = null) {
   const applied = outcome.applied
   const errors = outcome.errors
   const runId = outcome.runId
-  return { reply: replyText, question, options, applied, errors, runId, remindersCreated: outcome.remindersCreated || [], files: scope.files.map((f) => f.path) }
+  const rulesUpdated = applied?.length
+    ? await distillNotebookRules(ctx, root, { instruction, operations, view: context.view })
+    : []
+  const replyOut = rulesUpdated.length ? `${replyText}\n\n维护规则已沉淀：${rulesUpdated.join('、')}` : replyText
+  return { reply: replyOut, question, options, applied, errors, runId, remindersCreated: outcome.remindersCreated || [], files: scope.files.map((f) => f.path), rulesUpdated }
 }
 
 function formatAgentHistory(history) {
@@ -4294,11 +4374,14 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
         if (!out.errors?.length) {
           const cleanReply = String(result.text || '').split('\n').filter((line) => !/(暂存|待确认|确认后|确认提示|确认卡片|点一下确认)/.test(line)).join('\n').trim()
           addTaskImpact(job, impact)
+          const rulesUpdated = await distillNotebookRules(ctx, root, { instruction, operations: staged, view: context.view })
           job.staged = []
           job.status = 'done'
           job.phase = 'done'
           job.message = '处理完成'
-          job.result = { reply: cleanReply ? `${cleanReply}\n\n已直接写入，无需确认。` : '已直接写入。', applied: out.applied || [], errors: [], runId: out.runId || null, files: [] }
+          let replyText = cleanReply ? `${cleanReply}\n\n已直接写入，无需确认。` : '已直接写入。'
+          if (rulesUpdated.length) replyText += `\n\n维护规则已沉淀：${rulesUpdated.join('、')}`
+          job.result = { reply: replyText, applied: out.applied || [], errors: [], runId: out.runId || null, files: [], rulesUpdated }
           saveAgentSession(root, job)
           return
         }
@@ -4314,6 +4397,7 @@ async function runNativeAgent(ctx, root, manifest, args, job) {
         id, at: nowIso(), instruction, reply: result.text,
         brief: `将执行 ${staged.length} 项改动：\n${summary.map(formatAgentOperationSummary).join('\n')}${imageRemovalNote(root, staged) ? `\n${imageRemovalNote(root, staged)}` : ''}`,
         scale: 'large', summary, signature: job.baselineSignature, operations: staged,
+        distillScope: { view: context.view || 'home' },
       }
       writeJson(path.join(pendingDir(root), `${id}.json`), pending)
       job.staged = []
@@ -4392,7 +4476,7 @@ function validateMcpToolArgs(name, args) {
   }
 }
 
-async function callHttpMcpTool(root, name, args = {}) {
+async function callHttpMcpTool(root, name, args = {}, ctx = null) {
   validateMcpToolArgs(name, args)
   const readNames = new Set(['list_notebooks', 'list_notes', 'search_notes', 'read_note', 'read_todo', 'read_stickies', 'notify'])
   if (readNames.has(name)) return callMcpTool(root, name, args)
@@ -4421,7 +4505,8 @@ async function callHttpMcpTool(root, name, args = {}) {
   }
   const out = await applyAgentOperations(root, [operation], 'MCP 外部写入', null, true, versionGuard)
   if (out.errors?.length) throw new Error(out.errors.join('；'))
-  return { content: [{ type: 'text', text: JSON.stringify({ ok: true, applied: out.applied, runId: out.runId }) }] }
+  const rulesUpdated = await distillNotebookRules(ctx, root, { instruction: 'MCP 外部写入', operations: [operation], view: '' })
+  return { content: [{ type: 'text', text: JSON.stringify({ ok: true, applied: out.applied, runId: out.runId, rulesUpdated }) }] }
 }
 
 async function runNativeShadow(ctx, root, manifest, args, job) {
@@ -5047,7 +5132,7 @@ export function apply(ctx) {
         if (payload.method === 'initialize') return send({ jsonrpc: '2.0', id: payload.id, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'suiji', version: '0.2.3', commit: pluginCommit() } } })
         if (payload.method === 'ping') return send({ jsonrpc: '2.0', id: payload.id, result: {} })
         if (payload.method === 'tools/list') return send({ jsonrpc: '2.0', id: payload.id, result: { tools: [...mcpTools, ...MCP_WRITE_TOOLS] } })
-        if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: await callHttpMcpTool(root, payload.params?.name, payload.params?.arguments || {}) })
+        if (payload.method === 'tools/call') return send({ jsonrpc: '2.0', id: payload.id, result: await callHttpMcpTool(root, payload.params?.name, payload.params?.arguments || {}, ctx) })
         throw new Error(`未知方法：${payload.method}`)
       } catch (err) {
         send({ jsonrpc: '2.0', id: payload.id, error: { code: -32603, message: String(err?.message ?? err) } })
@@ -5876,7 +5961,12 @@ async function dispatchUnlocked(ctx, op, args) {
           pending.status = 'confirmed'; pending.confirmedAt = nowIso(); pending.result = outcome
           writeJson(file, pending)
         } else fs.rmSync(file, { force: true })
-        return { ...outcome, reply: pending.reply || '' }
+        let reply = pending.reply || ''
+        if (pending.distillScope) {
+          const rulesUpdated = await distillNotebookRules(ctx, root, { instruction: pending.instruction || '', operations: pending.operations || [], view: pending.distillScope.view })
+          if (rulesUpdated.length) reply = `${reply}\n\n维护规则已沉淀：${rulesUpdated.join('、')}`.trim()
+        }
+        return { ...outcome, reply }
       } finally {
         confirmLocks.delete(id)
       }
