@@ -1413,6 +1413,8 @@ window.__ModuleLoader__.load({
 
       const computeDrop = (event) => {
         if (!dragNotebook) return null
+        // getBoundingClientRect 给的是视口像素，插入线的 left/top 用的是 zoom 之后的内部像素。
+        const dropZoom = uiScaleFactor(state)
         const cards = Array.from(event.currentTarget.querySelectorAll('[data-notebook-name]'))
         let best = null
         const containerRect = event.currentTarget.getBoundingClientRect()
@@ -1433,13 +1435,13 @@ window.__ModuleLoader__.load({
         }
         if (!best) return null
         const gapCenter = best.side === 'before' ? best.rect.left - 7 : best.rect.right + 7
-        const maxX = containerRect.width - 3
+        const maxX = containerRect.width / dropZoom - 3
         return {
           name: best.name,
           side: best.side,
-          lineX: Math.max(0, Math.min(maxX, gapCenter - containerRect.left - 1.5)),
-          lineY: best.rect.top - containerRect.top,
-          lineH: best.rect.height,
+          lineX: Math.max(0, Math.min(maxX, (gapCenter - containerRect.left) / dropZoom - 1.5)),
+          lineY: (best.rect.top - containerRect.top) / dropZoom,
+          lineH: best.rect.height / dropZoom,
         }
       }
 
