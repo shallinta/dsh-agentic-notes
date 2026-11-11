@@ -135,6 +135,7 @@ updated: 2026-11-04T09:20:00+08:00
 - 顶部「新建笔记」。
 - 笔记本有名称、描述、关键词和两条维护规则：`agentRules`（Agent 自动更新，`/agent` 可在操作时沉淀，用户也可手改）与 `manualRules`（仅人工，`/agent` 与 MCP 只读）。`/agent` 与 MCP 每次操作该笔记本前都要先读取这两条规则并遵守。
 - `/agent` 与 MCP 都能修改名称、描述、关键词和 `agentRules`；`manualRules` 只走 UI 的 `notebook.update`。
+- 归档分类同样要读两条规则；目标笔记本存在 `manualRules` 时一律进入待确认，不自动写入。
 
 ### 日历（日记）
 

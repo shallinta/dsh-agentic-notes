@@ -1271,6 +1271,8 @@ function notebookContext(root, manifest) {
       notebook: nb.name,
       description: nb.description || '',
       keywords: nb.keywords || [],
+      agentRules: nb.agentRules || '',
+      manualRules: nb.manualRules || '',
       notes: notes.map((n) => ({ title: n.title, tags: n.tags || [], summary: n.summary || '' })),
     })
   }
@@ -1306,6 +1308,7 @@ async function classifyReact(ctx, root, manifest, capture) {
     '你在给随记的一条快捷记录选笔记本和笔记。用 ReAct 工具先看已有结构，再决定。',
     '每次只返回 JSON：{"action":"tool","tool":"list_notebooks|list_notes|read_note","args":{...}} 或 {"action":"finish","notebook":"笔记本名","note":"笔记标题","newNotebook":false,"newNote":false,"reason":"理由"}。',
     '最多 5 轮。优先归入已有笔记本和笔记；确实不合适才新建；需要用户选择时使用 {"action":"ask_user","question":"...","options":[{"id":"A","label":"..."}]}。',
+    '笔记本的 manualRules 是人工制定、优先级最高的约束，agentRules 次之，冲突时以 manualRules 为准。规则禁止或限制自动写入时不要归入那本；这条记录明显属于它时，用 ask_user 让用户决定。',
     '最终必须调用 {"action":"assign_capture","notebook":"...","note":"...","newNote":false,"bullets":["..."],"tags":["..."],"summary":"...","notebookMeta":{"description":"可选，整本一句话描述","keywords":["可选，3 到 6 个关键词"]}} 提交归类；notebookMeta 只在这条记录让整本主题变化时给出。',
   ].join('\n')
   let conversation = `待归档记录：${capture.text}`
@@ -1344,6 +1347,7 @@ async function classify(ctx, root, manifest, capture) {
     'notebookMeta（可选，当归入已有笔记本且这条记录带来新主题时，给出更新后的 {"description":"整本一句话描述","keywords":["3 到 6 个关键词"]}）、',
     'newNote（布尔，是否新建笔记）、reason（一句话理由）。',
     '优先归入已有笔记本；只有当内容明显不属于任何已有笔记本时，才新建。',
+    '每个笔记本的 manualRules 是人工制定、优先级最高的约束，agentRules 次之；两者冲突时以 manualRules 为准。既符合内容、又被规则禁止自动写入的笔记本，仍然选它，并在 reason 里写明需要人工确认；不要为了绕开规则把记录塞进不合适的笔记本。',
     '笔记标题要具体、可检索，不要用“杂项”“其他”这类词。',
   ].join('\n')
   const user = [
@@ -1597,6 +1601,7 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
     const tags = Array.isArray(result.tags) ? result.tags.map(String).filter(Boolean).slice(0, 8) : []
     const summary = String(result.summary || '').slice(0, 200)
     let operation
+    let rewrote = false
     if (isNewNote) {
       operation = { op: 'create', notebook, title: safeName(wantedTitle || '新笔记'), body: noteBullet, tags, summary }
     } else {
@@ -1607,6 +1612,7 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
       data.updated = nowIso()
       const rewritten = String(result.rewrittenNote || '').trim()
       if (rewritten) {
+        rewrote = true
         const body = splitFrontmatter(rewritten).body || rewritten
         operation = { op: 'write', path: noteFile, content: `${buildFrontmatter(data)}${body.replace(/^\n+/, '')}` }
       } else {
@@ -1632,8 +1638,12 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
       metaOps.push(meta)
     }
     const operations = [operation, ...metaOps]
+    // 人工规则优先级最高：目标笔记本有 manualRules 时一律先给用户确认，不自动写入。
+    const targetBook = current.notebooks.find((item) => item.name === notebook)
+    const manualRuleLock = String(targetBook?.manualRules || '').trim().length > 0
+    const captureSize = String(capture.text || '').length
     const pendingId = crypto.randomUUID()
-    const brief = `快捷记录将归入「${notebook} · ${safeName(wantedTitle || '新笔记')}」${images.length ? `，并移动 ${images.length} 张图片` : ''}${metaOps.length ? '，并更新笔记本信息' : ''}。`
+    const brief = `快捷记录将归入「${notebook} · ${safeName(wantedTitle || '新笔记')}」${images.length ? `，并移动 ${images.length} 张图片` : ''}${metaOps.length ? '，并更新笔记本信息' : ''}${manualRuleLock ? '；这本笔记本有仅人工维护的规则，需要你确认' : ''}。`
     const summaryOps = summarizeOperations(operations)
     const pending = {
       id: pendingId, kind: 'capture', captureId: capture.id, at: nowIso(),
@@ -1655,8 +1665,10 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
     saveManifest(root, latest)
     pending.signature = stateSignature(root, latest)
     writeJson(path.join(pendingDir(root), `${pendingId}.json`), pending)
-    // 只有体量大的改动才需要确认；模型选择整篇改写本身不构成打扰用户的理由。
-    const autoApply = !requiresConfirmation(root, operations)
+    // 短记录直接落盘：目标笔记很长、或模型整篇改写时，只有体量大才确认；
+    // 笔记本有人工规则时不自动写入。
+    const needsReview = manualRuleLock || captureSize >= 500 || (rewrote && requiresConfirmation(root, operations))
+    const autoApply = !needsReview
     if (autoApply) {
       try { await dispatch(ctx, 'agent.confirm', { id: pendingId }); return } catch (err) {
         try { const latest2 = readManifest(root); updateCapture(latest2, id, { error: `自动归档失败：${String(err?.message ?? err)}` }); saveManifest(root, latest2) } catch { /* ignore */ }

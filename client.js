@@ -339,7 +339,7 @@ window.__ModuleLoader__.load({
 .dsan-set-sub{border-top:1px solid var(--dsw-alias-border-l1);padding-top:12px;margin-top:12px}
 .dsan-set-section .dsan-field:last-child{margin-bottom:4px}
 .dsan-field{margin-bottom:12px}
-.dsan-field label{display:block;font-size:12px;color:var(--dsw-alias-label-secondary);margin-bottom:5px}.dsan-field-hint{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:italic 600 9px/1 Georgia,serif;cursor:help;vertical-align:1px}.dsan-field-hint:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary)}
+.dsan-field label{display:block;position:relative;font-size:12px;color:var(--dsw-alias-label-secondary);margin-bottom:5px}.dsan-field-hint{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:italic 600 9px/1 Georgia,serif;cursor:help;vertical-align:1px;position:relative}.dsan-field-hint:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary)}.dsan-field-hint::after{content:attr(data-hint);position:absolute;left:-6px;bottom:calc(100% + 7px);z-index:80;display:none;width:max-content;max-width:260px;padding:7px 9px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:0 10px 26px rgba(0,0,0,.28);font-family:inherit;font-size:11.5px;font-weight:400;font-style:normal;line-height:1.55;white-space:normal;text-align:left;pointer-events:none}.dsan-field-hint:hover::after{display:block}
 .dsan-field input,.dsan-field textarea,.dsan-field select{width:100%;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;padding:7px 10px;font:inherit;outline:none}
 .dsan-field input[type=checkbox],.dsan-field input[type=radio]{width:auto;height:auto;padding:0;margin:0;border:0;background:transparent;border-radius:0;flex:none;accent-color:var(--dsw-alias-brand-primary)}
 .dsan-field textarea{min-height:70px;resize:vertical}
@@ -927,7 +927,7 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'dsan-field' },
         h('label', null,
           label,
-          hint ? h('span', { className: 'dsan-field-hint', title: hint, 'aria-label': hint, role: 'img' }, 'i') : null),
+          hint ? h('span', { className: 'dsan-field-hint', 'data-hint': hint, 'aria-label': hint, role: 'img' }, 'i') : null),
         children)
     }
 
