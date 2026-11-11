@@ -476,6 +476,7 @@ window.__ModuleLoader__.load({
           instruction: String(saved.instruction || ''),
           reply: String(saved.reply || '').slice(0, 20000),
           history: Array.isArray(saved.history) ? saved.history.slice(-8) : [],
+          jobId: String(saved.jobId || ''),
         }
       } catch { return null }
     }
@@ -514,6 +515,7 @@ window.__ModuleLoader__.load({
           instruction: thread.instruction || '',
           reply: String(thread.reply || '').slice(0, 20000),
           history: Array.isArray(thread.history) ? thread.history.slice(-8) : [],
+          jobId: String(thread.jobId || ''),
           at: Date.now(),
         }))
       } catch { /* ignore */ }
