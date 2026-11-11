@@ -3357,9 +3357,15 @@ window.__ModuleLoader__.load({
           const data = await api('agent.sessions')
           const list = data?.sessions || []
           setAgentSessionList(list)
-          if (!agentSessionDetail && list[0]) {
-            const detail = await api('agent.session', { id: list[0].id })
-            setAgentSessionDetail(detail?.session || null)
+          // 每次打开都重新拉一次：优先当前选中的会话，没有就取第一条。
+          const target = list.find((item) => item.id === agentSessionDetail?.id) || list[0]
+          if (target) {
+            const detail = await api('agent.session', { id: target.id })
+            const session = detail?.session || null
+            if (session) setAgentSessionDetail(session)
+            else setAgentSessionDetail(null)
+          } else {
+            setAgentSessionDetail(null)
           }
         } catch { /* ignore */ }
       }
@@ -3825,6 +3831,12 @@ window.__ModuleLoader__.load({
             jobId = started.jobId
           }
           agentJobRef.current = jobId
+          // 用户刚发的指令先记进打开的会话记录，等服务端保存后再由刷新覆盖。
+          setAgentSessionDetail((prev) => {
+            if (!prev || (prev.jobId !== jobId && prev.id !== jobId)) return prev
+            const localTurn = { id: `local-${Date.now()}`, input: instruction, status: 'running', startedAt: new Date().toISOString(), tools: [] }
+            return { ...prev, status: 'running', updatedAt: new Date().toISOString(), turns: [...(prev.turns || []), localTurn] }
+          })
           updateLaunch({ body: 'Agent 正在启动…', fromJob: jobId })
           try { localStorage.setItem('dsan-active-agent-job', jobId) } catch { /* ignore */ }
           while (true) {
