@@ -1310,7 +1310,7 @@ async function classifyReact(ctx, root, manifest, capture) {
     '最多 5 轮。优先归入已有笔记本和笔记；确实不合适才新建；需要用户选择时使用 {"action":"ask_user","question":"...","options":[{"id":"A","label":"..."}]}。',
     '每个笔记本的 manualRules 和 agentRules 是它自己的维护约定，必须遵守；两条冲突时以 manualRules 为准。规则是给你看的，不要向用户复述，也不要要求用户复述一遍。',
     '当内容最合适的笔记本被它的规则挡住时，按规则允许的方式处理：改选同样合适的其他笔记本、新建一本、或者采用规则允许的写入方式；如果规则要求用户参与，或你判断只能由用户决定，就先用 ask_user 问清楚，再提交分类，不要自行绕过规则。',
-    '最终必须调用 {"action":"assign_capture","notebook":"...","note":"...","newNote":false,"bullets":["..."],"tags":["..."],"summary":"...","notebookMeta":{"description":"可选，整本一句话描述","keywords":["可选，3 到 6 个关键词"]}} 提交归类；notebookMeta 只在这条记录让整本主题变化时给出。',
+    '最终必须调用 {"action":"assign_capture","notebook":"...","note":"...","newNote":false,"bullets":["..."],"tags":["..."],"summary":"...","notebookMeta":{"description":"可选，整本一句话描述","keywords":["可选，3 到 6 个关键词"]}} 提交归类；这条记录带来新主题，或目标笔记本的描述/关键词为空时，要给出 notebookMeta 补全，描述已有且合适时可以只给关键词。',
   ].join('\n')
   let conversation = `待归档记录：${capture.text}`
   for (let i = 0; i < 5; i += 1) {
@@ -1345,7 +1345,7 @@ async function classify(ctx, root, manifest, capture) {
     '只返回一个 JSON 对象，不要解释。',
     '字段：notebook（字符串，已有笔记本名或新笔记本名）、note（字符串，已有笔记标题或新笔记标题）、',
     'newNotebook（可选，若需要新建笔记本则给 {name, description, keywords: []}）、',
-    'notebookMeta（可选，当归入已有笔记本且这条记录带来新主题时，给出更新后的 {"description":"整本一句话描述","keywords":["3 到 6 个关键词"]}）、',
+    'notebookMeta（可选，当归入已有笔记本，且这条记录带来新主题、或该笔记本的描述/关键词为空时给出：{"description":"整本一句话描述","keywords":["3 到 6 个关键词"]}；描述已有且合适时可以只给关键词）、',
     'newNote（布尔，是否新建笔记）、reason（一句话理由）。',
     '优先归入已有笔记本；只有当内容明显不属于任何已有笔记本时，才新建。',
     'needsPermission（可选布尔，仅在需要用户同意后才能写入目标笔记本时设为 true）、permissionReason（可选字符串，说明为什么要用户确认）、',
