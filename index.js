@@ -1306,7 +1306,7 @@ function setCaptureJob(capture, patch) {
 async function classifyReact(ctx, root, manifest, capture) {
   const system = [
     '你在给随记的一条快捷记录选笔记本和笔记。用 ReAct 工具先看已有结构，再决定。',
-    '每次只返回 JSON：{"action":"tool","tool":"list_notebooks|list_notes|read_note","args":{...}} 或 {"action":"finish","notebook":"笔记本名","note":"笔记标题","newNotebook":false,"newNote":false,"reason":"理由"}。',
+    '每次只返回 JSON：{"action":"tool","tool":"list_notebooks|list_notes|read_note","args":{...}} 或 {"action":"finish","notebook":"笔记本名","note":"笔记标题","newNotebook":false,"newNote":false,"reason":"理由","notebookMeta":{"description":"可选","keywords":["可选"]}}。',
     '最多 5 轮。优先归入已有笔记本和笔记；确实不合适才新建；需要用户选择时使用 {"action":"ask_user","question":"...","options":[{"id":"A","label":"..."}]}。',
     '每个笔记本的 manualRules 和 agentRules 是它自己的维护约定，必须遵守；两条冲突时以 manualRules 为准。规则是给你看的，不要向用户复述，也不要要求用户复述一遍。',
     '当内容最合适的笔记本被它的规则挡住时，按规则允许的方式处理：改选同样合适的其他笔记本、新建一本、或者采用规则允许的写入方式；如果规则要求用户参与，或你判断只能由用户决定，就先用 ask_user 问清楚，再提交分类，不要自行绕过规则。',
@@ -1627,18 +1627,37 @@ async function archiveCaptureTransactional(ctx, root, queuedManifest, id) {
     const isNewBook = !current.notebooks.some((item) => item.name === notebook)
     const baseBook = current.notebooks.find((item) => item.name === notebook)
     const suggestedMeta = plan.notebookMeta && typeof plan.notebookMeta === 'object' ? plan.notebookMeta : null
-    const suggestedDescription = String((isNewBook ? plan.newNotebook?.description : suggestedMeta?.description) || '').trim().slice(0, 300)
+    let nextDescription = String((isNewBook ? plan.newNotebook?.description : suggestedMeta?.description) || '').trim().slice(0, 300)
     const suggestedKeywords = isNewBook ? plan.newNotebook?.keywords : suggestedMeta?.keywords
-    const mergedKeywords = Array.isArray(suggestedKeywords)
+    let nextKeywords = Array.isArray(suggestedKeywords)
       ? [...new Set([...(isNewBook ? [] : (baseBook?.keywords || [])), ...suggestedKeywords.map((item) => String(item).trim()).filter(Boolean)])].slice(0, 15)
       : []
-    const descriptionChanged = Boolean(suggestedDescription) && suggestedDescription !== String(baseBook?.description || '')
-    const keywordsChanged = mergedKeywords.length > 0 && JSON.stringify(mergedKeywords) !== JSON.stringify(baseBook?.keywords || [])
-    if (isNewBook ? Boolean(suggestedDescription) || mergedKeywords.length > 0 : (descriptionChanged || keywordsChanged)) {
-      const meta = { op: 'updateNotebook', notebook }
-      if (isNewBook ? Boolean(suggestedDescription) : descriptionChanged) meta.description = suggestedDescription
-      if (mergedKeywords.length) meta.keywords = mergedKeywords
-      metaOps.push(meta)
+    if (isNewBook) {
+      if (nextDescription || nextKeywords.length) {
+        const meta = { op: 'updateNotebook', notebook }
+        if (nextDescription) meta.description = nextDescription
+        if (nextKeywords.length) meta.keywords = nextKeywords
+        metaOps.push(meta)
+      }
+    } else {
+      const baseDescription = String(baseBook?.description || '')
+      const baseKeywords = Array.isArray(baseBook?.keywords) ? baseBook.keywords : []
+      if (!nextDescription) nextDescription = baseDescription
+      if (!nextKeywords.length) nextKeywords = baseKeywords
+      // 分类没有补全时，描述或关键词仍为空就问一次模型补上。
+      if (baseBook && (!nextDescription || !nextKeywords.length)) {
+        const suggested = await suggestNotebookMeta(ctx, root, baseBook, capture.text)
+        if (suggested) {
+          if (!nextDescription && suggested.description) nextDescription = suggested.description
+          if (!nextKeywords.length && suggested.keywords.length) nextKeywords = suggested.keywords
+        }
+      }
+      if ((nextDescription && nextDescription !== baseDescription) || JSON.stringify(nextKeywords) !== JSON.stringify(baseKeywords)) {
+        const meta = { op: 'updateNotebook', notebook }
+        if (nextDescription && nextDescription !== baseDescription) meta.description = nextDescription
+        if (JSON.stringify(nextKeywords) !== JSON.stringify(baseKeywords)) meta.keywords = nextKeywords
+        metaOps.push(meta)
+      }
     }
     const operations = [operation, ...metaOps]
     // 规则由模型判断；它认为需要用户同意时才停下来问。
@@ -3460,6 +3479,32 @@ async function applyAgentOperations(root, operations, instruction, expectedSigna
   })
 }
 
+
+// 归档时如果目标笔记本的描述或关键词还是空的，单独问一次模型补全。
+async function suggestNotebookMeta(ctx, root, book, sampleText = '') {
+  try {
+    if (!ctx?.get?.('llm')) return null
+    const system = [
+      '你在给随记的一本笔记本写简介。只输出一个 JSON 对象：{"description":"一句话描述","keywords":["3 到 6 个关键词"]}。',
+      '描述说明这本收集什么、给谁用，一句话即可；关键词是以后判断笔记归属用的短词。不要营销话术，不要复述笔记标题。',
+    ].join('\n')
+    const notes = listNoteFiles(root, book.name).slice(0, 20).map((note) => `- ${note.title}`).join('\n')
+    const user = [
+      `笔记本：${book.name}`,
+      `现有描述：${book.description || '（空）'}`,
+      `现有关键词：${(book.keywords || []).join('、') || '（空）'}`,
+      notes ? `已有笔记标题：\n${notes}` : '还没有笔记',
+      `刚归档的内容：${String(sampleText || '').slice(0, 200)}`,
+    ].join('\n')
+    const parsed = parseJsonReply(await callModel(ctx, root, system, user, 400, 30000))
+    return {
+      description: typeof parsed?.description === 'string' ? parsed.description.trim().slice(0, 300) : '',
+      keywords: Array.isArray(parsed?.keywords) ? parsed.keywords.map((item) => String(item).trim()).filter(Boolean).slice(0, 8) : [],
+    }
+  } catch {
+    return null
+  }
+}
 
 // 任务结束后给整本/多本笔记本沉淀「下次怎么做」的维护规则。
 // 只在确实动过笔记本时运行，单篇笔记的内部修改不触发。
