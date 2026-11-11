@@ -8,7 +8,7 @@ export const nativeAgentToolSchemas = [
   { name: 'list_notebooks', description: '列出当前笔记库的笔记本。', parameters: object({}) },
   {
     name: 'update_notebook',
-    description: '修改笔记本的名称、描述、关键词或 Agent 维护规则。动手前先阅读 list_notebooks 返回的 agentRules 与 manualRules 并遵守；manualRules 只能由用户修改。',
+    description: '修改笔记本的名称、描述、关键词或 Agent 维护规则。动手前先阅读 list_notebooks 返回的 agentRules 与 manualRules；两者冲突时以 manualRules 为准。严禁修改 manualRules（仅人工维护、只读，写入会被宿主拒绝），也严禁用改写笔记的方式绕过它的限制。',
     parameters: object({
       notebook: string('笔记本名称'),
       nextName: string('可选的新名称'),

@@ -178,7 +178,7 @@ window.__ModuleLoader__.load({
 .dsan-notebook-page{isolation:isolate}
 .dsan-notebook-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.13;pointer-events:none;z-index:-1;border-radius:12px}
 .dsan-note-page{max-width:840px}
-.dsan-note-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;flex-wrap:wrap}.dsan-taginput{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:34px;padding:5px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-1)}.dsan-taginput:focus-within{border-color:var(--dsw-alias-brand-primary)}.dsan-taginput-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);font-size:11.5px;line-height:1.5;white-space:nowrap}.dsan-taginput-chip .x{border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1;padding:0}.dsan-taginput input{flex:1;min-width:90px;border:none;background:transparent;color:inherit;outline:none;font:inherit;padding:2px 0}
+.dsan-note-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;flex-wrap:wrap}.dsan-taginput{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:34px;padding:5px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-1)}.dsan-taginput:focus-within{border-color:var(--dsw-alias-brand-primary)}.dsan-taginput-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);font-size:11.5px;line-height:1.5;white-space:nowrap}.dsan-taginput-chip .x{border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:13px;line-height:1;padding:0}.dsan-taginput input{flex:1;min-width:90px;width:auto!important;border:none!important;background:transparent!important;color:inherit;outline:none;font:inherit;padding:2px 0!important;border-radius:0}
 .dsan-note-title{font-size:22px;font-weight:600;margin:0;flex:1;min-width:200px;overflow:hidden;text-overflow:ellipsis}
 .dsan-md{line-height:1.75;overflow-wrap:break-word}
 .dsan-md h1{font-size:24px;margin:26px 0 12px;font-weight:600}
@@ -339,7 +339,7 @@ window.__ModuleLoader__.load({
 .dsan-set-sub{border-top:1px solid var(--dsw-alias-border-l1);padding-top:12px;margin-top:12px}
 .dsan-set-section .dsan-field:last-child{margin-bottom:4px}
 .dsan-field{margin-bottom:12px}
-.dsan-field label{display:block;font-size:12px;color:var(--dsw-alias-label-secondary);margin-bottom:5px}
+.dsan-field label{display:block;font-size:12px;color:var(--dsw-alias-label-secondary);margin-bottom:5px}.dsan-field-hint{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);font:italic 600 9px/1 Georgia,serif;cursor:help;vertical-align:1px}.dsan-field-hint:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary)}
 .dsan-field input,.dsan-field textarea,.dsan-field select{width:100%;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;padding:7px 10px;font:inherit;outline:none}
 .dsan-field input[type=checkbox],.dsan-field input[type=radio]{width:auto;height:auto;padding:0;margin:0;border:0;background:transparent;border-radius:0;flex:none;accent-color:var(--dsw-alias-brand-primary)}
 .dsan-field textarea{min-height:70px;resize:vertical}
@@ -923,8 +923,12 @@ window.__ModuleLoader__.load({
           h('button', { className: 'x', onClick: () => { dismiss(toast.id); toast.onDismiss?.() }, 'aria-label': '关闭' }, '×')))
     }
 
-    function Field({ label, children }) {
-      return h('div', { className: 'dsan-field' }, h('label', null, label), children)
+    function Field({ label, hint, children }) {
+      return h('div', { className: 'dsan-field' },
+        h('label', null,
+          label,
+          hint ? h('span', { className: 'dsan-field-hint', title: hint, 'aria-label': hint, role: 'img' }, 'i') : null),
+        children)
     }
 
     function Switch({ checked, onChange, label, disabled = false, className = '', onIcon, offIcon }) {
@@ -2268,20 +2272,24 @@ window.__ModuleLoader__.load({
           onCommit: () => saveNow(),
           placeholder: '输入后回车，或用逗号分隔',
         })),
-        h(Field, { label: '笔记本维护规则（Agent 自动更新）' }, h('textarea', {
+        h(Field, {
+          label: '笔记本维护规则（Agent 自动更新）',
+          hint: '/agent 每次操作这本笔记本前都会先读这条规则，有值得沉淀的经验时它会自己补充；你也可以直接改。',
+        }, h('textarea', {
           value: draft.agentRules,
           onChange: (event) => update('agentRules', event.target.value),
           onBlur: saveNow,
           placeholder: '例如：新记录先看有没有同主题小节；标签沿用已有词；保留原话。',
         })),
-        h('div', { className: 'dsan-set-hint' }, '/agent 每次操作这本笔记本前都会先读这条规则，有值得沉淀的经验时它会自己补充；你也可以直接改。'),
-        h(Field, { label: '笔记本维护规则（仅人工更新）' }, h('textarea', {
+        h(Field, {
+          label: '笔记本维护规则（仅人工更新）',
+          hint: '这条只有你能改，/agent 和 MCP 只能读、不能写。两条规则冲突时以这条为准。',
+        }, h('textarea', {
           value: draft.manualRules,
           onChange: (event) => update('manualRules', event.target.value),
           onBlur: saveNow,
           placeholder: '例如：不要动「参考」小节；改写前必须先问我。',
         })),
-        h('div', { className: 'dsan-set-hint' }, '这条只有你能改，/agent 和 MCP 只能读、不能写。'),
         savedName ? h('div', { className: 'dsan-notebook-delete' },
           h('button', { className: 'dsan-btn danger', onClick: () => setConfirmDelete(true) }, '删除笔记本')) : null)
     }

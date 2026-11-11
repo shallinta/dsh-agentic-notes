@@ -84,7 +84,8 @@ http://127.0.0.1:53152/dsh-agentic-notes/mcp
 
 - 目标笔记当前内容
 - 目标笔记本里的相关标题
-- 目标笔记本的 `agentRules` 与 `manualRules`（都来自 `list_notebooks`），并照着执行；`manualRules` 不要尝试修改
+- 目标笔记本的 `agentRules` 与 `manualRules`（都来自 `list_notebooks`）。两条规则冲突时，以 `manualRules` 为准，它的约束无条件优先
+- `manualRules` 是仅人工维护的规则：**绝对禁止修改**，只能读；任何写入都会被宿主拒绝，也不要用改写笔记内容的方式绕过它
 - 待办或便笺的当前状态
 
 ### 第二步：向用户展示改动
