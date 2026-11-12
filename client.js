@@ -255,7 +255,7 @@ window.__ModuleLoader__.load({
 .dsan-sticky-head{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:grab;background:var(--dsw-alias-bg-layer-2);font-size:11px;color:var(--dsw-alias-label-secondary);user-select:none}
 .dsan-sticky-head .sp{flex:1}
 .dsan-sticky-head:focus{outline:none}
-.dsan-sticky-body{flex:1;overflow:auto;scrollbar-gutter:stable;padding:4px 8px 8px}.dsan-sticky-body.editing{display:flex}.dsan-sticky-text{padding:4px 2px;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text;line-height:1.55;user-select:text}.dsan-sticky-text.empty{color:var(--dsw-alias-label-secondary);opacity:.7}.dsan-sticky-line{min-height:1.55em}.dsan-sticky-li{display:flex;gap:6px;align-items:flex-start}.dsan-sticky-li .bullet{flex:none;color:var(--dsw-alias-brand-primary);line-height:1.55}.dsan-sticky-li .txt{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}.dsan-sticky-editor{flex:1;width:100%;min-height:80px;border:none;background:transparent;color:inherit;font:inherit;line-height:1.55;outline:none;resize:none;padding:4px 2px;white-space:pre-wrap;overflow-wrap:anywhere}
+.dsan-sticky-body{flex:1;overflow:auto;padding:4px 8px 8px;scrollbar-width:none;-ms-overflow-style:none}.dsan-sticky-body::-webkit-scrollbar{display:none;width:0;height:0}.dsan-sticky-body.editing{display:flex}.dsan-sticky-text{padding:4px 2px;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text;line-height:1.55;user-select:text}.dsan-sticky-text.empty{color:var(--dsw-alias-label-secondary);opacity:.7}.dsan-sticky-line{min-height:1.55em}.dsan-sticky-li{display:flex;gap:6px;align-items:flex-start}.dsan-sticky-li .bullet{flex:none;color:var(--dsw-alias-brand-primary);line-height:1.55}.dsan-sticky-li .txt{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}.dsan-sticky-editor{flex:1;width:100%;min-height:80px;border:none;background:transparent;color:inherit;font:inherit;line-height:1.55;outline:none;resize:none;padding:4px 2px;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;scrollbar-width:none;-ms-overflow-style:none}.dsan-sticky-editor::-webkit-scrollbar{display:none;width:0;height:0}
 .dsan-sticky-item{display:flex;gap:6px;align-items:flex-start;padding:2px 0}
 .dsan-sticky-item input,.dsan-sticky-item textarea{flex:1;min-width:0;border:none;background:transparent;color:inherit;font:inherit;outline:none;padding:2px 0;resize:none;overflow:hidden;box-shadow:none;appearance:none}
 .dsan-sticky-item .dot{color:var(--dsw-alias-brand-primary);line-height:1.6;flex:none}
@@ -960,6 +960,15 @@ window.__ModuleLoader__.load({
     function StickyCard({ sticky, onSave, onDelete, onLayout, floating, onMinimize, canMinimize = true, onItems, onRaise, scale = 1 }) {
       const [items, setItems] = useState(sticky.items || [])
       const [editing, setEditing] = useState(false)
+      const editorRef = useRef(null)
+      useEffect(() => {
+        if (!editing) return
+        const el = editorRef.current
+        if (!el) return
+        el.focus()
+        const end = el.value.length
+        try { el.setSelectionRange(end, end) } catch { /* ignore */ }
+      }, [editing])
       const [paletteOpen, setPaletteOpen] = useState(false)
       const paletteRef = useRef(null)
       const colorBtnRef = useRef(null)
@@ -1133,6 +1142,7 @@ window.__ModuleLoader__.load({
         h('div', { className: cls('dsan-sticky-body', editing && 'editing') },
           editing
             ? h('textarea', {
+              ref: editorRef,
               className: 'dsan-sticky-editor',
               value: text,
               autoFocus: true,
