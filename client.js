@@ -246,16 +246,16 @@ window.__ModuleLoader__.load({
 .dsan-todo-add input{width:100%;height:30px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:transparent;color:inherit;padding:0 9px;font:inherit;outline:none}
 .dsan-ball{position:absolute;width:46px;height:46px;border-radius:50%;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.22);font-weight:600;font-size:12px;z-index:20;border:none}
 .dsan-sticky-layer{position:sticky;top:0;left:0;width:100%;height:0;pointer-events:none;z-index:10}
-.dsan-sticky{position:absolute;pointer-events:auto;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.16);display:flex;flex-direction:column;min-width:180px;min-height:110px;overflow:hidden;transition:box-shadow .15s}
+.dsan-sticky{position:absolute;pointer-events:auto;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.16);display:flex;flex-direction:column;min-width:180px;min-height:110px;overflow:hidden;transition:box-shadow .15s,background-color .2s ease}
 .dsan-sticky.colored{background:color-mix(in srgb, var(--dsan-sticky-tint) var(--dsan-sticky-opacity, 45%), transparent)}
-.dsan-sticky.colored:focus-within{background:var(--dsan-sticky-tint)}
+.dsan-sticky.colored:focus-within,.dsan-sticky.colored:hover,.dsan-sticky.colored.pinned{background:var(--dsan-sticky-tint)}
 .dsan-sticky:focus{outline:none}
 .dsan-sticky:not(.colored){background:color-mix(in srgb, var(--dsw-alias-bg-overlay) var(--dsan-sticky-opacity, 45%), transparent)}
-.dsan-sticky:not(.colored):focus-within{background:var(--dsw-alias-bg-overlay)}
+.dsan-sticky:not(.colored):focus-within,.dsan-sticky:not(.colored):hover,.dsan-sticky:not(.colored).pinned{background:var(--dsw-alias-bg-overlay)}
 .dsan-sticky-head{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:grab;background:var(--dsw-alias-bg-layer-2);font-size:11px;color:var(--dsw-alias-label-secondary);user-select:none}
 .dsan-sticky-head .sp{flex:1}
 .dsan-sticky-head:focus{outline:none}
-.dsan-sticky-body{flex:1;overflow:auto;scrollbar-gutter:stable;padding:4px 8px 8px}
+.dsan-sticky-body{flex:1;overflow:auto;scrollbar-gutter:stable;padding:4px 8px 8px}.dsan-sticky-body.editing{display:flex}.dsan-sticky-text{padding:4px 2px;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text;line-height:1.55;user-select:text}.dsan-sticky-text.empty{color:var(--dsw-alias-label-secondary);opacity:.7}.dsan-sticky-line{min-height:1.55em}.dsan-sticky-li{display:flex;gap:6px;align-items:flex-start}.dsan-sticky-li .bullet{flex:none;color:var(--dsw-alias-brand-primary);line-height:1.55}.dsan-sticky-li .txt{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}.dsan-sticky-editor{flex:1;width:100%;min-height:80px;border:none;background:transparent;color:inherit;font:inherit;line-height:1.55;outline:none;resize:none;padding:4px 2px;white-space:pre-wrap;overflow-wrap:anywhere}
 .dsan-sticky-item{display:flex;gap:6px;align-items:flex-start;padding:2px 0}
 .dsan-sticky-item input,.dsan-sticky-item textarea{flex:1;min-width:0;border:none;background:transparent;color:inherit;font:inherit;outline:none;padding:2px 0;resize:none;overflow:hidden;box-shadow:none;appearance:none}
 .dsan-sticky-item .dot{color:var(--dsw-alias-brand-primary);line-height:1.6;flex:none}
@@ -276,7 +276,7 @@ window.__ModuleLoader__.load({
 .dsan-h-nw{left:0;top:0;width:13px;height:13px;cursor:nwse-resize}
 .dsan-h-se{right:0;bottom:0;width:13px;height:13px;cursor:nwse-resize;border-right:2px solid var(--dsw-alias-border-l2);border-bottom:2px solid var(--dsw-alias-border-l2);border-radius:0 0 8px 0}
 .dsan-h-sw{left:0;bottom:0;width:13px;height:13px;cursor:nesw-resize}
-.dsan-float{position:fixed;right:18px;top:46%;width:318px;z-index:60}
+.dsan-float{position:fixed;right:18px;bottom:18px;width:318px;z-index:60}
 .dsan-float .dsan-sticky{position:relative;width:100%;height:220px;box-shadow:0 16px 40px rgba(0,0,0,.24)}
 .dsan-fab{position:fixed;right:0;height:38px;touch-action:none;user-select:none;padding:0 12px 0 10px;border-radius:9px 0 0 9px;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base);border:none;cursor:pointer;display:flex;align-items:center;gap:6px;font:inherit;font-size:12px;z-index:40;box-shadow:0 6px 18px rgba(0,0,0,.18)}
 .dsan-fab-min{border-radius:99px 0 0 99px;padding:0 14px 0 10px;gap:7px}
@@ -959,7 +959,7 @@ window.__ModuleLoader__.load({
 
     function StickyCard({ sticky, onSave, onDelete, onLayout, floating, onMinimize, canMinimize = true, onItems, onRaise, scale = 1 }) {
       const [items, setItems] = useState(sticky.items || [])
-      const [title, setTitle] = useState('')
+      const [editing, setEditing] = useState(false)
       const [paletteOpen, setPaletteOpen] = useState(false)
       const paletteRef = useRef(null)
       const colorBtnRef = useRef(null)
@@ -978,7 +978,6 @@ window.__ModuleLoader__.load({
       const zoom = scale > 0 ? scale : 1
       const boxRef = useRef(null)
       const itemsRef = useRef(sticky.items || [])
-      const draftRef = useRef('')
       useEffect(() => { setItems(sticky.items || []); itemsRef.current = sticky.items || [] }, [sticky.id])
       const itemsKey = JSON.stringify(sticky.items || [])
       useEffect(() => {
@@ -991,8 +990,6 @@ window.__ModuleLoader__.load({
       useEffect(() => () => {
         if (saveTimer.current) clearTimeout(saveTimer.current)
         const latest = itemsRef.current.slice()
-        const draft = draftRef.current.trim()
-        if (draft) latest.push(draft)
         if (latest.some((item) => String(item || '').trim())) {
           api('sticky.save', { id: sticky.id, items: latest }).catch(() => { })
         }
@@ -1005,28 +1002,22 @@ window.__ModuleLoader__.load({
         saveTimer.current = setTimeout(() => { api('sticky.save', { id: sticky.id, items: next, ...extra }).catch(() => { }) }, 250)
       }
 
-      const updateItem = (idx, value) => {
-        const next = items.slice()
-        next[idx] = value
+      const text = items.length ? items.join('\n') : ''
+      const updateText = (value) => {
+        const next = String(value).split('\n').map((line) => line.replace(/\r$/, ''))
         setItems(next)
         itemsRef.current = next
         flush(next)
       }
-      const addItem = (value) => {
-        if (!String(value || '').trim()) return
-        const next = [...items, value]
-        setItems(next)
-        itemsRef.current = next
-        draftRef.current = ''
-        flush(next)
-        setTitle('')
-      }
-      const removeItem = (idx) => {
-        const next = items.filter((_, i) => i !== idx)
-        setItems(next)
-        itemsRef.current = next
-        flush(next)
-      }
+      const renderText = (value) => String(value).split('\n').map((line, index) => {
+        const bullet = /^\s*[-*+]\s+(.*)$/.exec(line)
+        if (bullet) {
+          return h('div', { key: index, className: 'dsan-sticky-li' },
+            h('span', { className: 'bullet' }, '•'),
+            h('span', { className: 'txt' }, bullet[1] || '\u00a0'))
+        }
+        return h('div', { key: index, className: 'dsan-sticky-line' }, line || '\u00a0')
+      })
 
       const startDrag = (event) => {
         event.currentTarget.focus?.({ preventScroll: true })
@@ -1084,7 +1075,7 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M9 3h6l-1 8 3 3v2H7v-2l3-3-1-8z' }), h('path', { d: 'M12 16v5' }))
 
       return h('div', {
-        className: cls('dsan-sticky', tint && 'colored'), style, ref: boxRef,
+        className: cls('dsan-sticky', tint && 'colored', sticky.pinned && 'pinned'), style, ref: boxRef,
         tabIndex: 0,
         onPointerDown: (event) => {
           const target = event.target
@@ -1139,38 +1130,22 @@ window.__ModuleLoader__.load({
             onClick: () => onDelete?.(sticky.id),
           }, h('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
             h('path', { d: 'M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13M10 11v5M14 11v5' })))),
-        h('div', { className: 'dsan-sticky-body', },
-          items.map((item, idx) => h('div', { key: idx, className: 'dsan-sticky-item' },
-            h('span', { className: 'dot' }, '•'),
-            h('textarea', {
-              value: item, rows: 1,
-              onBlur: () => flush(items),
-              onChange: (event) => updateItem(idx, event.target.value.replace(/\n/g, ' ')),
-              onKeyDown: (event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  const next = items.slice()
-                  next.splice(idx + 1, 0, '')
-                  setItems(next)
-                  flush(next)
-                  const inputs = event.currentTarget.closest('.dsan-sticky-body')?.querySelectorAll('textarea')
-                  setTimeout(() => inputs?.[idx + 1]?.focus(), 0)
-                }
-                if (event.key === 'Backspace' && !items[idx]) {
-                  event.preventDefault()
-                  removeItem(idx)
-                }
-              },
-            }),
-            h('button', { className: 'del', onClick: () => removeItem(idx), tabIndex: -1 }, '×'))),
-          h('form', {
-            onSubmit: (event) => { event.preventDefault(); addItem(title) },
-          }, h('input', {
-            value: title, placeholder: '加一条 · 回车',
-            onBlur: () => { if (title.trim()) addItem(title) },
-            onChange: (event) => { setTitle(event.target.value); draftRef.current = event.target.value },
-            style: { width: '100%', border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', outline: 'none', padding: '4px 0' },
-          }))),
+        h('div', { className: cls('dsan-sticky-body', editing && 'editing') },
+          editing
+            ? h('textarea', {
+              className: 'dsan-sticky-editor',
+              value: text,
+              autoFocus: true,
+              placeholder: '随手写点什么；以 - 或 * 开头的行会显示成列表',
+              onChange: (event) => updateText(event.target.value),
+              onBlur: () => { flush(itemsRef.current); setEditing(false) },
+              onKeyDown: (event) => { if (event.key === 'Escape') event.currentTarget.blur() },
+            })
+            : h('div', {
+              className: cls('dsan-sticky-text', !text.trim() && 'empty'),
+              title: '点击编辑',
+              onClick: () => setEditing(true),
+            }, text.trim() ? renderText(text) : '随手写点什么；以 - 或 * 开头的行会显示成列表')),
         floating ? null : ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) =>
           h('div', { key: dir, className: `dsan-h dsan-h-${dir}`, onPointerDown: startResize(dir) })))
     }
@@ -2489,7 +2464,7 @@ window.__ModuleLoader__.load({
                   onChange: (event) => { const next = Number(event.target.value); setStickyTransparency(next); patchSoon({ stickyTransparency: next }) },
                 }),
                 h('span', { style: { width: 38, textAlign: 'right', flex: 'none' } }, `${stickyTransparency}%`)),
-              h('div', { className: 'dsan-set-hint' }, '0% 不透明，100% 完全透明。只在未聚焦时生效，点进便笺后固定不透明。')),
+              h('div', { className: 'dsan-set-hint' }, '0% 不透明，100% 完全透明。鼠标悬停或便笺被固定时都会变成不透明，方便阅读。')),
             h('div', { className: 'dsan-set-row' },
               h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 } },
                 h('span', { style: { width: 120, flex: 'none' } }, '待办卡片透明度'),
