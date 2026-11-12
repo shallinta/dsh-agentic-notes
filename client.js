@@ -961,13 +961,16 @@ window.__ModuleLoader__.load({
       const [items, setItems] = useState(sticky.items || [])
       const [editing, setEditing] = useState(false)
       const editorRef = useRef(null)
+      const caretTarget = useRef(null)
       useEffect(() => {
         if (!editing) return
         const el = editorRef.current
         if (!el) return
         el.focus()
-        const end = el.value.length
-        try { el.setSelectionRange(end, end) } catch { /* ignore */ }
+        const wanted = Number.isFinite(caretTarget.current) ? caretTarget.current : el.value.length
+        const pos = Math.max(0, Math.min(Number(wanted), el.value.length))
+        try { el.setSelectionRange(pos, pos) } catch { /* ignore */ }
+        caretTarget.current = null
       }, [editing])
       const [paletteOpen, setPaletteOpen] = useState(false)
       const paletteRef = useRef(null)
@@ -1018,14 +1021,21 @@ window.__ModuleLoader__.load({
         itemsRef.current = next
         flush(next)
       }
+      const caretForLine = (index) => {
+        const all = items.length ? items : ['']
+        if (!Number.isFinite(index) || index < 0) return all.join('\n').length
+        let offset = 0
+        for (let i = 0; i < index && i < all.length; i += 1) offset += all[i].length + 1
+        return offset + (all[index]?.length || 0)
+      }
       const renderText = (value) => String(value).split('\n').map((line, index) => {
         const bullet = /^\s*[-*+]\s+(.*)$/.exec(line)
         if (bullet) {
-          return h('div', { key: index, className: 'dsan-sticky-li' },
+          return h('div', { key: index, className: 'dsan-sticky-li', 'data-line-index': index },
             h('span', { className: 'bullet' }, '•'),
             h('span', { className: 'txt' }, bullet[1] || '\u00a0'))
         }
-        return h('div', { key: index, className: 'dsan-sticky-line' }, line || '\u00a0')
+        return h('div', { key: index, className: 'dsan-sticky-line', 'data-line-index': index }, line || '\u00a0')
       })
 
       const startDrag = (event) => {
@@ -1154,7 +1164,12 @@ window.__ModuleLoader__.load({
             : h('div', {
               className: cls('dsan-sticky-text', !text.trim() && 'empty'),
               title: '点击编辑',
-              onClick: () => setEditing(true),
+              onClick: (event) => {
+                const line = event.target?.closest?.('[data-line-index]')
+                const index = line ? Number(line.getAttribute('data-line-index')) : -1
+                caretTarget.current = caretForLine(index)
+                setEditing(true)
+              },
             }, text.trim() ? renderText(text) : '随手写点什么；以 - 或 * 开头的行会显示成列表')),
         floating ? null : ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((dir) =>
           h('div', { key: dir, className: `dsan-h dsan-h-${dir}`, onPointerDown: startResize(dir) })))
