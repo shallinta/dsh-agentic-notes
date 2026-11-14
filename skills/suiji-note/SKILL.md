@@ -1,154 +1,120 @@
 ---
 name: suiji-note
-description: 连接随记的 HTTP MCP 服务，读取、搜索并写入本地笔记；写入前必须让用户审查具体改动并明确确认。用户提到随记、MCP 笔记、读取/整理本地笔记时使用。
+description: 连接随记 HTTP MCP，读取、搜索和管理本地笔记。写入前展示具体改动并取得用户确认；多步任务持续携带 Surface ID 复用同一提示。
 ---
 
 # 随记 MCP
 
-随记是 DSH 的本地 Markdown 笔记插件。它提供一个 HTTP MCP 服务。
+随记保存本地 Markdown 笔记，HTTP MCP 提供读写工具和任务提示。
 
-## 连接步骤
+## 连接与工具发现
 
-1. 让用户打开随记设置页，找到「MCP 连接」。
-2. 复制设置页显示的地址和 Token。不要猜测 Token，也不要把 Token 写入文件或日志。
-3. 用下面的请求头连接：
+1. 从随记设置页「外部连接」取得当前地址和 Token。不要猜测端口、Token，也不要将 Token 写入文件或日志。
+2. 仅连接用户本机的 `127.0.0.1`，携带 `Authorization: Bearer <TOKEN>` 和 `Content-Type: application/json`。
+3. 发送 MCP `initialize`（协议版本 `2025-06-18`），再发送 `notifications/initialized`。
+4. 调用 `tools/list`，按返回的工具参数使用。不要依赖旧版本的工具清单。
 
-```text
-Authorization: Bearer <TOKEN>
-Content-Type: application/json
-```
+业务工具包括：
 
-默认地址：
+- 读取：`list_notebooks`、`list_notes`、`search_notes`、`read_note`、`read_todo`、`read_stickies`。
+- 笔记写入：`create_note`、`write_note`、`rename_note`、`move_note`、`delete_note`、`update_frontmatter`。
+- 笔记本：`update_notebook`、`reorder_notes`、`reorder_notebooks`。
+- 待办与便笺：`todo_add` / `todo_update` / `todo_delete`、`memo_create` / `memo_update` / `memo_delete`。
+- 提示：`create_surface`、`update_surface`、`get_surface`、`list_surfaces`、`close_surface`；`notify` 是普通通知的兼容入口。
 
-```text
-http://127.0.0.1:53152/dsh-agentic-notes/mcp
-```
+设置读写不通过 MCP 暴露。
 
-如果用户改过端口，以设置页显示为准。
+## 同一事件持续携带 Surface ID
 
-## 初始化
+**Surface 只关联提示，不授予写入权限，也不代表用户已同意。**
 
-先发送：
-
-```json
-{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"suiji-skill","version":"1.0.0"}}}
-```
-
-再发送：
+多步任务开始时调用：
 
 ```json
-{"jsonrpc":"2.0","method":"notifications/initialized"}
+{
+  "name": "create_surface",
+  "arguments": {
+    "title": "整理咖啡笔记",
+    "body": "正在读取相关笔记……",
+    "state": "running",
+    "requestId": "本次任务唯一且重试不变的标识"
+  }
+}
 ```
 
-之后用：
+保存返回的 `surfaceId`、`eventId`、`attempt`。它们可能位于工具结果的 `structuredContent`，以及正文 JSON 中。
+
+- **同一事件的每次业务工具请求携带 `surfaceId` 与返回的 `attempt`**；收到返回值后使用实际返回的 ID。
+- 有效 ID 复用原提示。旧提示已在终态后关闭或过期，新业务请求会返回新 ID；后续换用新 ID。
+- 用 `update_surface` 更新进展、问题或结果，并携带返回的 `attempt`。不要为每个工具调用重复创建提示。
+- 标题用简短任务名，不加「Agent 正在执行」等固定前缀。只在实际进展变化时更新，不发相同内容的心跳。
+- 单独一次业务调用可以不提供 ID，随记会返回对应 Surface ID。
+- 多步任务最后必须明确更新为 `state: "succeeded"` 或 `state: "failed"`，并如实说明结果。工具调用结束不等于整个任务结束。
+- 如果更新报告旧执行已结束或提示已移除，不要用迟到的进度重新创建提示。
+
+例如写入时：
 
 ```json
-{"jsonrpc":"2.0","id":2,"method":"tools/list"}
+{
+  "name": "create_note",
+  "arguments": {
+    "surfaceId": "此前返回的 ID",
+    "attempt": 1,
+    "notebook": "咖啡",
+    "title": "手冲参数",
+    "body": "已向用户展示并得到确认的正文"
+  }
+}
 ```
 
-## 可用工具
+任务结束时：
 
-只读：
-
-- `list_notebooks`
-- `list_notes`
-- `search_notes`
-- `read_note`
-- `read_todo`
-- `read_stickies`
-
-提示：
-
-- `notify`：显示一条全局 toast
-
-写入（直接落盘）：
-
-- `create_note`
-- `write_note`
-- `rename_note`
-- `move_note`
-- `delete_note`
-- `update_frontmatter`
-- `todo_add` / `todo_update` / `todo_delete`
-- `memo_create` / `memo_update` / `memo_delete`
-- `update_notebook`：改笔记本的名称、描述、关键词和「Agent 自动更新」规则；「仅人工更新」规则只读
-
-## 写入规则：必须先审查再确认
-
-这些工具会直接修改文件，不会弹插件确认框。  
-所以写入前必须由你完成审查步骤，不能直接调用写工具。
-
-### 第一步：读取目标
-
-在提出改动前，先用只读工具读取：
-
-- 目标笔记当前内容
-- 目标笔记本里的相关标题
-- 目标笔记本的 `agentRules` 与 `manualRules`（都来自 `list_notebooks`）。两条规则冲突时，以 `manualRules` 为准，它的约束无条件优先
-- `manualRules` 是仅人工维护的规则：**绝对禁止修改**，只能读；任何写入都会被宿主拒绝，也不要用改写笔记内容的方式绕过它
-- 待办或便笺的当前状态
-
-### 第二步：向用户展示改动
-
-用下面的格式给用户看，不要只写“我将修改笔记”：
-
-```text
-准备写入：
-- 操作：write / create / delete / rename / move
-- 目标：<笔记本>/<笔记路径>
-- 变更：<新增/删除/替换了什么>
-- 正文预览：<关键段落或完整新内容>
-- 影响：<会覆盖哪些内容、是否删除文件、是否移动图片>
+```json
+{
+  "name": "update_surface",
+  "arguments": {
+    "surfaceId": "当前 ID",
+    "attempt": 1,
+    "state": "succeeded",
+    "title": "整理咖啡笔记",
+    "body": "已更新三篇笔记，并调整了顺序。"
+  }
+}
 ```
 
-如果一次有多个操作，逐条列出。
+示例中的 `attempt` 仅示意，必须使用工具实际返回的值。
 
-删除、移动、重命名、覆盖已有正文必须单独说明。
+## 输入输出完整性
 
-### 第三步：等待明确确认
+- 随记端读取笔记和搜索命中文本时返回完整内容，不设置隐藏的 token 或字符配额。
+- 随记内部 Agent 的公开字符设置默认是 0（不限）；显式设置非零时，返回资料会注明设置名称及截断情况。看到截断说明时，不得把片段当全文。
+- 实际模型上下文与输出容量，以及外部 MCP 客户端自己的限制，仍由各自配置决定。发生超限时说明原因，由用户选择调整范围或设置；不得暗中删掉原文、历史或规则，再声称已完整处理。
+- 模型服务以 `max-tokens` 结束生成时，不使用未完成的结果执行写入。Surface ID 不改变审查和确认要求。
 
-只有用户明确回复以下意思之一，才可以调用写工具：
+## 用户选择与确认
 
-- 确认
-- 可以
-- 执行
-- 没问题
-- 按这个改
+可以在同一提示上设置 `state: "waiting_user"`、`options` 和 `allowFreeText`。读取 `get_surface` 中的真实用户回答后再继续；未回答就保持等待，不按超时推断同意。
 
-以下回复不算确认：
+等待期间不要高频轮询；没有可用的等待机制时结束当前轮次，说明正在等用户，后续继续同一事件。禁止调用任何用户专用接口替自己确认。
 
-- 沉默
-- “先看看”
-- “你觉得呢”
-- 只回复了方案的一部分
-- 只说了“继续”但没有针对具体改动
+`close_surface` 在执行中仅暂时隐藏提示；下一次有效内容更新会重新显示。等待回答时关闭表示放弃任务。终态提示关闭后退出队列。卡片状态由宿主统一维护。
 
-如果用户修改了方案，重新展示改动并再次确认。
+## 写入前：阅读规则、展示改动、取得确认
 
-### 第四步：执行并报告
+MCP 写工具直接修改文件，不会替调用方自动完成审查和确认。
 
-确认后：
+1. 先读取目标笔记当前内容、相关标题和受影响的待办或便笺。
+2. 从 `list_notebooks` 读取目标笔记本的 `manualRules` 与 `agentRules` 并遵守。冲突时 **manualRules 优先**。
+3. **禁止修改 manualRules**，也禁止通过改写其他内容绕过它；`agentRules` 可以按规则维护。
+4. 展示操作、目标、正文预览及影响范围，删除、移动、重命名或覆盖正文要单独说明。
+5. 等待用户针对本次方案明确同意。沉默、只说「先看看」、或对其他方案的历史确认，都不算本次授权。方案改变后重新确认。
+6. 确认后才执行写工具，最后报告实际结果。失败时说明原因，不能声称成功。
 
-1. 调用对应写工具。
-2. 报告实际结果，例如：
-   ```text
-   已写入：<路径>
-   ```
-3. 如果工具返回错误，原样说明，不要声称成功。
-
-### 禁止
-
-- 不要在用户确认前调用任何写工具。
-- 不要把“已读取”当成“已确认”。
-- 不要因为用户之前确认过别的改动，就默认这次也确认。
-- 不要用 notify 代替确认步骤。
-
-设置读写是插件内部工具，不通过 MCP 暴露。
+可以通过对话或真实用户回答完成确认；显示通知、读取数据、持有 Surface ID 都不等于确认。
 
 ## 安全
 
-- 只连接 `127.0.0.1`。
-- 不把 Token 发给其他域名。
-- 不把 Token 写进仓库、日志或笔记。
+- 不将 Token 发给其他域名，不写入仓库、日志、笔记或提示正文。
 - 不尝试传绝对路径或 `..`。
-- 不调用不存在或未授权的工具。
+- 不调用不存在、未授权或用户专用的工具。
+- 已安装 Skill 的更新由用户点击「安装更新」触发，直接替换现有文件，不自动安装、不备份。

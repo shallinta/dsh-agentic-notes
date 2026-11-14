@@ -79,7 +79,6 @@ async function collectTurn(stream) {
  * @param {AbortSignal} [options.signal]
  * @param {number} [options.maxRounds]
  * @param {number} [options.maxToolCalls]
- * @param {number} [options.maxTokens]
  * @param {(state:object) => void} [options.onProgress]
  */
 export function validateToolArguments(tools, name, args) {
@@ -108,7 +107,7 @@ export function validateToolArguments(tools, name, args) {
 export async function runNativeToolLoop(options) {
   const {
     llm, provider, model, messages, system = '', tools = [], executeTool,
-    signal, maxRounds = 20, maxToolCalls = 50, maxTokens,
+    signal, maxRounds = 20, maxToolCalls = Infinity,
   } = options
   if (!llm || typeof llm.stream !== 'function') throw new Error('模型服务不可用')
   if (!provider || !model) throw new Error('没有可用的默认模型')
@@ -120,21 +119,20 @@ export async function runNativeToolLoop(options) {
     if (signal?.aborted || options.isCancelled?.()) throw Object.assign(new Error('已取消'), { cancelled: true })
     const request = {
       provider, model, system, messages, tools,
-      ...(Number.isFinite(maxTokens) ? { maxTokens } : {}),
       ...(signal ? { signal } : {}),
     }
     const turn = await collectTurn(llm.stream(request))
     if (signal?.aborted || options.isCancelled?.()) throw Object.assign(new Error('已取消'), { cancelled: true })
     const reason = turn.finish?.reason
     if (reason?.kind === 'aborted') throw Object.assign(new Error('已取消'), { cancelled: true })
-    if (reason?.kind === 'error') throw new Error(reason.failure?.message || '模型调用失败')
+    if (reason?.kind === 'error') throw Object.assign(new Error(reason.failure?.message || '模型调用失败'), { fromModel: true, code: reason.failure?.code || '' })
     if (reason?.usage) {
       usage = {
         input: usage.input + (Number(reason.usage.inputTokens) || 0),
         output: usage.output + (Number(reason.usage.outputTokens) || 0),
       }
     }
-    if (reason?.kind === 'max-tokens') throw new Error('模型输出被截断')
+    if (reason?.kind === 'max-tokens') throw Object.assign(new Error('模型服务返回输出长度上限（max-tokens），本轮生成未完成'), { fromModel: true, code: 'MAX_TOKENS' })
     if (!turn.calls.length) {
       if (turn.text) messages.push(assistantMessage(turn.text, [], provider, model, turn.finish?.replayState))
       return { text: turn.text, messages, toolCalls, usage, rounds: round + 1 }

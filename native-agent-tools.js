@@ -1,5 +1,5 @@
-// Tool declarations for the future DSH-native agent loop.
-// These are declarations only: the current JSON ReAct engine still owns execution.
+// Shared tool declarations for the native Agent and JSON protocol checks.
+// Business effects are owned by AgentService adapters, not these schemas.
 
 const object = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false })
 const string = (description) => ({ type: 'string', description })
@@ -67,9 +67,9 @@ export const nativeAgentToolSchemas = [
     }, ['operations']),
   },
   { name: 'apply_operations', description: '提交一组操作；服务端会按统一规则决定是否直接执行或转待确认。', parameters: object({ operations: { type: 'array', items: { type: 'object' } } }, ['operations']) },
-  { name: 'create_surface', description: '创建进度、问题或确认提示。', parameters: object({ type: { type: 'string', enum: ['toast', 'modal'] }, title: string('标题'), body: string('正文'), kind: string('progress/question/confirm'), options: { type: 'array', items: { type: 'object' } }, allowFreeText: { type: 'boolean' }, awaitResponse: { type: 'boolean' } }, ['type', 'title', 'body']) },
-  { name: 'update_surface', description: '更新当前会话的提示内容。', parameters: object({ surfaceId: string('surface ID'), title: string('标题'), body: string('正文'), options: { type: 'array', items: { type: 'object' } }, kind: string('提示类型') }, ['surfaceId']) },
-  { name: 'close_surface', description: '关闭当前会话的提示。', parameters: object({ surfaceId: string('surface ID') }, ['surfaceId']) },
+  { name: 'create_surface', description: '初始化或更新当前事件唯一的提示卡片，返回 surfaceId；后续进展、问题均复用此 ID。', parameters: object({ title: string('简短任务标题，无需固定状态前缀'), body: string('正文'), size: { type: 'string', enum: ['small', 'large'] }, kind: string('progress/question/confirm'), options: { type: 'array', items: { type: 'object' } }, allowFreeText: { type: 'boolean' }, awaitResponse: { type: 'boolean', description: '需要用户回答时设为 true，结束本轮等待用户后续回复' } }, ['title', 'body']) },
+  { name: 'update_surface', description: '更新当前事件的提示内容；有效更新重新显示被隐藏的卡片。需要回答时设 awaitResponse。', parameters: object({ surfaceId: string('当前事件的提示 ID'), title: string('任务标题'), body: string('正文'), size: { type: 'string', enum: ['small', 'large'] }, options: { type: 'array', items: { type: 'object' } }, kind: string('progress/question/confirm'), allowFreeText: { type: 'boolean' }, awaitResponse: { type: 'boolean' } }, ['surfaceId']) },
+  { name: 'close_surface', description: '暂时隐藏当前执行提示，不取消任务；下一次有效内容更新重新显示。', parameters: object({ surfaceId: string('surface ID') }, ['surfaceId']) },
   { name: 'finish', description: '结束当前轮次并给用户结果。', parameters: object({ reply: string('给用户看的结果') }, ['reply']) },
 ]
 

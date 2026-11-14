@@ -57,19 +57,24 @@ window.__ModuleLoader__.load({
 .dsan-attachments{display:flex;flex-wrap:wrap;gap:6px;padding:8px 8px 0 0}
 .dsan-attachment{position:relative;width:42px;height:42px;margin:0 6px 6px 0;overflow:visible}
 .dsan-attachment img{width:100%;height:100%;object-fit:cover;display:block;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2)}
-.dsan-surface-stack.dsan-unified-stack{flex-direction:column-reverse}
-.dsan-unified-stack .dsan-toast{width:360px;max-width:calc(100vw / var(--dsan-zoom, 1) - 44px)}
-.dsan-surface-stack{position:fixed;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column;gap:14px;align-items:flex-end;padding:8px;background:transparent;overflow:visible;isolation:isolate}
-.dsan-surface-toast{position:relative;right:auto;bottom:auto;z-index:0;width:360px;max-width:calc(100vw / var(--dsan-zoom, 1) - 44px);background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 4px 14px -2px rgba(0,0,0,.18);padding:13px}
-.dsan-surface-toast .x{position:absolute;bottom:8px;right:8px;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;border-radius:6px}
-.dsan-progress-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary);margin-top:5px}
-.dsan-surface-progress .dsan-progress-row{position:absolute;top:12px;right:12px;margin:0}
-.dsan-surface-progress .tt{padding-right:56px}
-.dsan-spinner{width:8px;height:8px;border-radius:50%;background:var(--dsw-alias-brand-primary);animation:dsan-pulse 1s ease-in-out infinite}
-@keyframes dsan-pulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
-.dsan-surface-toast .tt{font-weight:600;font-size:13px}
-.dsan-surface-toast .tb{font-size:12px;color:var(--dsw-alias-label-secondary);margin-top:5px;white-space:pre-wrap;max-height:160px;overflow:auto}
-.dsan-surface-toast .ta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding-right:30px}
+ .dsan-surface-stack{position:absolute;right:14px;bottom:14px;z-index:90;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px;max-width:calc(100% - 28px);max-height:calc(100% - 28px);overflow:auto;padding:6px;pointer-events:none;scrollbar-width:none}
+.dsan-surface-stack::-webkit-scrollbar{display:none}
+.dsan-surface-card{pointer-events:auto;flex:none;width:360px;max-width:100%;max-height:calc(100vh / var(--dsan-zoom,1) - 60px);display:flex;flex-direction:column;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;box-shadow:0 8px 24px color-mix(in srgb,var(--dsw-alias-label-primary) 15%,transparent);padding:12px;transition:width .2s ease,max-height .2s ease;overflow:hidden}
+.dsan-surface-card.large{width:680px;max-height:max(100px,calc(var(--dsan-content-height, 600px) - 40px - var(--dsan-peer-space,0px)))}
+.dsan-surface-head{display:flex;align-items:flex-start;gap:10px}
+.dsan-surface-title{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;font-weight:600}
+.dsan-surface-size,.dsan-surface-close{flex:none;width:25px;height:25px;display:flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit}
+.dsan-surface-size:hover,.dsan-surface-close:hover{background:var(--dsw-alias-bg-layer-2)}
+.dsan-surface-state{display:flex;gap:6px;align-items:center;color:var(--dsw-alias-label-secondary);font-size:10.5px;margin-top:3px}
+.dsan-spinner{display:inline-block;width:11px;height:11px;border:2px solid var(--dsw-alias-border-l2);border-top-color:var(--dsw-alias-brand-primary);border-radius:50%;animation:dsan-spin 1s linear infinite}@keyframes dsan-spin{to{transform:rotate(360deg)}}
+.dsan-surface-content{min-height:0;overflow:auto;margin-top:7px}
+.dsan-surface-body{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.6;max-height:150px;overflow:auto}
+.dsan-surface-card.large .dsan-surface-body{max-height:none}
+.dsan-surface-card.compact .dsan-surface-body{max-height:2em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsan-surface-input{display:block;width:100%;min-height:90px;margin-top:10px;padding:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit;resize:vertical;outline:none}
+.dsan-surface-foot{display:flex;align-items:flex-end;gap:8px;flex:none;margin-top:10px}
+.dsan-surface-actions{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px;max-height:100px;overflow:auto}
+.dsan-surface-error{margin-top:6px;color:var(--dsw-alias-state-error-primary);font-size:12px;white-space:pre-wrap}
 .dsan-settings-hero{display:flex;justify-content:center;padding:4px 0 20px;margin-bottom:16px;border-bottom:1px solid var(--dsw-alias-border-l1)}
 .dsan-settings-avatar-shell{position:relative;width:152px;height:152px;background:transparent}
 .dsan-settings-avatar-wrap{position:relative;width:152px;height:152px;border-radius:50%;overflow:hidden;background:transparent;border:1px solid var(--dsw-alias-border-l2);box-shadow:0 0 0 4px var(--dsw-alias-bg-overlay),0 0 0 5px color-mix(in srgb, var(--dsw-alias-border-l2) 78%, var(--dsw-alias-label-secondary))}
@@ -110,7 +115,7 @@ window.__ModuleLoader__.load({
 .dsan-notebook-delete{margin:20px 0 0;display:flex;justify-content:flex-start}
 .dsan-notebook-delete .dsan-btn{height:32px;min-width:88px;justify-content:center;line-height:1}
 .dsan-privacy-badge{position:absolute;left:4px;top:4px;z-index:6;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle, rgba(0,0,0,.6) 0%, rgba(0,0,0,.38) 45%, rgba(0,0,0,0) 72%);color:#fff;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.dsan-body{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;position:relative;z-index:1}
+.dsan-content-area{flex:1;min-height:0;display:flex;flex-direction:column;position:relative;overflow:hidden}.dsan-body{min-height:0;flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;position:relative;z-index:1}
 .dsan-btn{height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .dsan-btn:hover{background:var(--dsw-alias-bg-layer-2)}
 .dsan-btn.primary{background:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-bg-base)}
@@ -314,16 +319,6 @@ window.__ModuleLoader__.load({
 .dsan-reminder-foot{display:flex;justify-content:flex-end;margin-top:10px}
 .dsan-reminder-stop{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font-size:11.5px;padding:4px 9px;border-radius:6px;cursor:pointer}
 .dsan-reminder-stop:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2)}
-.dsan-toasts{position:fixed;right:22px;bottom:22px;display:flex;flex-direction:column;gap:10px;z-index:80;width:360px;max-width:calc(100vw / var(--dsan-zoom, 1) - 44px)}
-.dsan-toast{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:12px 13px;position:relative;animation:dsan-in .16s ease-out}
-@keyframes dsan-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.dsan-toast .tt{font-weight:600;font-size:12.5px;padding-right:4px}
-.dsan-toast .tb{color:var(--dsw-alias-label-secondary);font-size:12px;margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto}
-.dsan-toast-foot{display:flex;align-items:flex-end;gap:8px;margin-top:9px}
-.dsan-toast .ta{display:flex;gap:8px;flex-wrap:wrap;flex:1;min-width:0}
-.dsan-toast-foot .sp{flex:1}
-.dsan-toast .x{position:static;flex:none;margin-left:auto;align-self:flex-end;width:24px;height:24px;border:none;background:none;color:var(--dsw-alias-label-secondary);cursor:pointer;font-size:19px;line-height:1;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
-.dsan-toast .x:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
 .dsan-overlay{position:absolute;inset:0;background:rgba(0,0,0,.34);display:flex;align-items:center;justify-content:center;z-index:90;padding:24px}
 .dsan-modal{background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.28);width:min(560px,100%);max-height:calc(88vh / var(--dsan-zoom, 1));display:flex;flex-direction:column;overflow:hidden}
 .dsan-modal.wide{width:min(920px,100%)}
@@ -443,82 +438,6 @@ window.__ModuleLoader__.load({
 
     function saveView(view) {
       try { localStorage.setItem('dsan.view.v2', JSON.stringify(view)) } catch { /* ignore */ }
-    }
-
-    function readSavedToasts() {
-      try {
-        const saved = JSON.parse(localStorage.getItem('dsan.toasts.v2') || 'null')
-        if (!saved || !Array.isArray(saved.toasts) || Date.now() - Number(saved.savedAt || 0) > 30 * 60 * 1000) return []
-        return saved.toasts.filter((toast) => toast && toast.title && !String(toast.id || '').startsWith('notify-')).slice(-3).map((toast) => ({
-          id: String(toast.id || `restored-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`),
-          title: String(toast.title || ''),
-          body: String(toast.body || ''),
-          auto: false,
-        }))
-      } catch { return [] }
-    }
-
-    function saveToasts(toasts) {
-      try {
-        const keep = (toasts || []).filter((toast) => !String(toast.key || '').startsWith('agentjob:') && !toast.notificationId).slice(-3).map((toast) => ({
-          id: toast.id, title: toast.title, body: toast.body,
-        }))
-        localStorage.setItem('dsan.toasts.v2', JSON.stringify({ savedAt: Date.now(), toasts: keep }))
-      } catch { /* ignore */ }
-    }
-
-    function readSavedAgentThread() {
-      try {
-        const saved = JSON.parse(localStorage.getItem('dsan.agent.thread.v1') || 'null')
-        if (!saved || !saved.at || Date.now() - Number(saved.at) > 24 * 60 * 60 * 1000) return null
-        if (!saved.reply) return null
-        return {
-          instruction: String(saved.instruction || ''),
-          reply: String(saved.reply || '').slice(0, 20000),
-          history: Array.isArray(saved.history) ? saved.history.slice(-8) : [],
-          jobId: String(saved.jobId || ''),
-        }
-      } catch { return null }
-    }
-
-    let liveSurfaces = []
-    let liveRoot = ''
-    const liveSurfaceListeners = new Set()
-    function publishLiveSurfaces(next) {
-      liveSurfaces = next
-      for (const listener of liveSurfaceListeners) { try { listener(next) } catch { /* ignore */ } }
-    }
-    function unsafeSurface(surface) {
-      return /DSML|dangerouslyDisableSandbox|<invoke|<\|/.test(String(surface?.body || '') + String(surface?.title || ''))
-    }
-    function forgetSavedSurface(id) {
-      try {
-        const raw = JSON.parse(localStorage.getItem('dsan-agent-surfaces') || '[]')
-        localStorage.setItem('dsan-agent-surfaces', JSON.stringify((Array.isArray(raw) ? raw : []).filter((item) => item?.id !== id)))
-      } catch { /* ignore */ }
-    }
-    function readSavedSurfaces() {
-      try {
-        const raw = JSON.parse(localStorage.getItem('dsan-agent-surfaces') || '[]')
-        return Array.isArray(raw) ? raw.filter((item) => item && typeof item === 'object' && !unsafeSurface(item) && !['closed', 'answered', 'cancelled', 'expired'].includes(item.status)) : []
-      } catch { return [] }
-    }
-    function saveSurfaces(surfaces) {
-      try {
-        localStorage.setItem('dsan-agent-surfaces', JSON.stringify((surfaces || []).filter((item) => !unsafeSurface(item) && !['closed', 'answered', 'cancelled', 'expired'].includes(item.status)).map(({ onSurfaceAction, ...rest }) => ({ ...rest, root: liveRoot })).slice(-8)))
-      } catch { /* ignore */ }
-    }
-    function saveAgentThread(thread) {
-      try {
-        if (!thread?.reply) { localStorage.removeItem('dsan.agent.thread.v1'); return }
-        localStorage.setItem('dsan.agent.thread.v1', JSON.stringify({
-          instruction: thread.instruction || '',
-          reply: String(thread.reply || '').slice(0, 20000),
-          history: Array.isArray(thread.history) ? thread.history.slice(-8) : [],
-          jobId: String(thread.jobId || ''),
-          at: Date.now(),
-        }))
-      } catch { /* ignore */ }
     }
 
     function clearLegacyUi() {
@@ -915,16 +834,6 @@ window.__ModuleLoader__.load({
           footer ? h('div', { className: 'dsan-modal-foot' }, footer) : null))
     }
 
-    function ToastCard({ toast, dismiss }) {
-      return h('div', { className: 'dsan-toast' },
-        h('div', { className: 'tt' }, toast.title),
-        toast.body ? h('div', { className: 'tb' }, toast.body) : null,
-        h('div', { className: 'dsan-toast-foot' },
-          toast.actions?.length ? h('div', { className: 'ta' }, toast.actions.map((action, idx) =>
-            h('button', { key: idx, className: cls('dsan-btn small', action.primary && 'primary'), title: action.title || undefined, onClick: () => { dismiss(toast.id); action.onClick?.() } }, action.label))) : h('span', { className: 'sp' }),
-          h('button', { className: 'x', onClick: () => { dismiss(toast.id); toast.onDismiss?.() }, 'aria-label': '关闭' }, '×')))
-    }
-
     function Field({ label, hint, children }) {
       return h('div', { className: 'dsan-field' },
         h('label', null,
@@ -1177,7 +1086,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 待办
 
-    function TodoCard({ todo, onSave, expanded = false, onExpandChange, hideDone = false, onHideDoneChange, onReminderCreated, pushToast }) {
+    function TodoCard({ todo, onSave, expanded = false, onExpandChange, hideDone = false, onHideDoneChange, onReminderCreated, notifySurface }) {
       const [items, setItems] = useState(todo?.items || [])
       const [version, setVersion] = useState(todo?.version || 0)
       const [draft, setDraft] = useState('')
@@ -1194,7 +1103,7 @@ window.__ModuleLoader__.load({
             if (res?.remindersCreated?.length) onReminderCreated?.(res.remindersCreated)
             onSave?.()
           }).catch((err) => {
-            pushToast?.({ title: '待办没保存', body: err.message })
+            notifySurface?.({ title: '待办保存失败', body: err.message })
             onSave?.()
           })
         }, 400)
@@ -1324,7 +1233,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 首页
 
-    function HomeView({ state, onOpenNotebook, onNewNotebook, onOpenDiary, refresh, pushToast, todoOpen, hiddenStickies = [], privacyMode = false, onPrivacyModeChange }) {
+    function HomeView({ state, onOpenNotebook, onNewNotebook, onOpenDiary, refresh, notifySurface, todoOpen, hiddenStickies = [], privacyMode = false, onPrivacyModeChange }) {
       const [dragState, setDragState] = useState({})
       const [zBump, setZBump] = useState({})
       const [dragNotebook, setDragNotebook] = useState(null)
@@ -1430,7 +1339,7 @@ window.__ModuleLoader__.load({
         if (index === -1) return
         const insert = index + (next.side === 'after' ? 1 : 0)
         names.splice(insert, 0, from)
-        api('notebook.reorder', { names }).then(() => refresh()).catch((err) => pushToast?.({ title: '排序没保存', body: err.message }))
+        api('notebook.reorder', { names }).then(() => refresh()).catch((err) => notifySurface?.({ title: '排序保存失败', body: err.message }))
       }
 
       const computeDrop = (event) => {
@@ -1468,7 +1377,7 @@ window.__ModuleLoader__.load({
       }
 
       const removeSticky = (id) => {
-        api('sticky.delete', { id }).then(() => { refresh() }).catch((err) => pushToast?.({ title: '删除失败', body: err.message }))
+        api('sticky.delete', { id }).then(() => { refresh() }).catch((err) => notifySurface?.({ title: '删除失败', body: err.message }))
       }
       const visibleNotebooks = privacyMode ? state.notebooks.filter((notebook) => notebook.private !== true) : state.notebooks
       return h('div', { className: 'dsan-home-wrap', ref: wrapRef },
@@ -1578,13 +1487,14 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 笔记
 
-    function NoteEditor({ note, onSaved, pushToast, onConflict, onDirty, onRegister }) {
+    function NoteEditor({ note, onSaved, notifySurface, onConflict, onDirty, onRegister }) {
       const [body, setBody] = useState(note.body)
       const [status, setStatus] = useState('已保存')
       const timer = useRef(null)
       const mtime = useRef(note.mtimeMs)
       const latest = useRef(note.body)
       const savedText = useRef(note.body)
+      const failureSurface = useRef('')
       useEffect(() => { setBody(note.body); latest.current = note.body; savedText.current = note.body; mtime.current = note.mtimeMs }, [note.path, note.mtimeMs])
       const save = useCallback(async (text) => {
         setStatus('保存中')
@@ -1594,11 +1504,15 @@ window.__ModuleLoader__.load({
           savedText.current = text
           mtime.current = new Date(res.updatedAt).getTime()
           setStatus('已保存')
+          if (failureSurface.current) {
+            notifySurface?.({ surfaceId: failureSurface.current, restart: true, state: 'succeeded', title: '笔记已保存', body: '已恢复自动保存。' })
+            failureSurface.current = ''
+          }
           onSaved?.()
           return res
         } catch (err) {
           setStatus('保存失败')
-          pushToast?.({ title: '保存失败', body: err.message })
+          notifySurface?.({ eventKey: `autosave:${note.path}`, title: '笔记保存失败', body: err.message }).then((data) => { failureSurface.current = data?.surface?.id || '' })
           return null
         }
       }, [note.path])
@@ -1624,7 +1538,7 @@ window.__ModuleLoader__.load({
         h('textarea', { className: 'dsan-editor', value: body, onChange: (event) => onChange(event.target.value), spellCheck: false }))
     }
 
-    function NoteView({ state, path, onBack, onOpenNote, pushToast, refresh, nonce }) {
+    function NoteView({ state, path, onBack, onOpenNote, notifySurface, refresh, nonce }) {
       const [note, setNote] = useState(null)
       const [editing, setEditing] = useState(false)
       const [conflict, setConflict] = useState(null)
@@ -1648,15 +1562,15 @@ window.__ModuleLoader__.load({
           setNote(data)
           setNewTitle(data.title)
           localBody.current = data.body
-        }).catch((err) => pushToast?.({ title: '打不开笔记', body: err.message }))
+        }).catch((err) => notifySurface?.({ title: '打开笔记失败', body: err.message }))
       }, [path, nonce, editing])
       if (!note) return h('div', { className: 'dsan-page' }, h('div', { className: 'dsan-empty' }, '正在打开…'))
       const openTarget = (target) => {
         const clean = target.replace(/^\.\//, '')
         if (clean.endsWith('.md')) {
-          api('note.read', { path: clean }).then(() => onOpenNote(clean)).catch(() => pushToast?.({ title: '链接的目标不存在', body: clean }))
+          api('note.read', { path: clean }).then(() => onOpenNote(clean)).catch(() => notifySurface?.({ title: '链接目标不存在', body: clean }))
         } else {
-          pushToast?.({ title: '只会打开笔记', body: clean })
+          notifySurface?.({ title: '暂不支持此链接', body: clean })
         }
       }
       const tags = note.frontmatter?.tags || []
@@ -1677,7 +1591,7 @@ window.__ModuleLoader__.load({
         editing
           ? h(NoteEditor, {
             note, onSaved: () => { refresh?.() },
-            pushToast,
+            notifySurface,
             onConflict: (content) => { setConflict(content) },
             onDirty: (text) => { localBody.current = text },
           })
@@ -1693,7 +1607,7 @@ window.__ModuleLoader__.load({
           footer: [h('button', { key: 'c', className: 'dsan-btn', onClick: () => setRenaming(false) }, '取消'),
           h('button', {
             key: 'ok', className: 'dsan-btn primary',
-            onClick: () => api('note.rename', { path, title: newTitle }).then((res) => { setRenaming(false); onOpenNote(res.path) }).catch((err) => pushToast?.({ title: '改名失败', body: err.message })),
+            onClick: () => api('note.rename', { path, title: newTitle }).then((res) => { setRenaming(false); onOpenNote(res.path) }).catch((err) => notifySurface?.({ title: '改名失败', body: err.message })),
           }, '改名')],
         }, h(Field, { label: '标题（也就是文件名）' }, h('input', { value: newTitle, onChange: (event) => setNewTitle(event.target.value), autoFocus: true }))) : null,
         confirmDelete ? h(Modal, {
@@ -1704,26 +1618,26 @@ window.__ModuleLoader__.load({
             onClick: () => api('note.delete', { path }).then((res) => {
               setConfirmDelete(false)
               onBack()
-              pushToast?.({ title: '已移到废纸篓', actions: [{ label: '撤销', onClick: () => api('trash.restore', { trash: res.trash, target: path }).then(() => refresh?.()) }] })
-            }).catch((err) => pushToast?.({ title: '删除失败', body: err.message })),
+              notifySurface?.({ title: '笔记已移入废纸篓', actions: [{ id: 'undo', label: '撤销', type: 'restore-trash', trash: res.trash, target: path }] })
+            }).catch((err) => notifySurface?.({ title: '删除失败', body: err.message })),
           }, '删除')],
         }, h('div', null, '会移到隐藏的废纸篓，可以撤销。')) : null)
     }
 
     // ------------------------------------------------------------------ 笔记本
 
-    function NotebookView({ state, name, onBack, onOpenNote, onEdit, pushToast, refresh, nonce }) {
+    function NotebookView({ state, name, onBack, onOpenNote, onEdit, notifySurface, refresh, nonce }) {
       const [notes, setNotes] = useState(null)
       const [dragNote, setDragNote] = useState(null)
       const [dropNote, setDropNote] = useState(null)
       const suppressNoteClick = useRef(false)
       const load = useCallback(() => {
-        api('notebook.notes', { name }).then((data) => setNotes(data.notes)).catch((err) => pushToast?.({ title: '打不开笔记本', body: err.message }))
+        api('notebook.notes', { name }).then((data) => setNotes(data.notes)).catch((err) => notifySurface?.({ title: '打开笔记本失败', body: err.message }))
       }, [name])
       useEffect(() => { load() }, [name, nonce])
       const notebook = state.notebooks.find((n) => n.name === name)
       const create = () => {
-        api('note.create', { notebook: name, title: '未命名笔记' }).then((res) => { load(); onOpenNote(res.path) }).catch((err) => pushToast?.({ title: '新建失败', body: err.message }))
+        api('note.create', { notebook: name, title: '未命名笔记' }).then((res) => { load(); onOpenNote(res.path) }).catch((err) => notifySurface?.({ title: '新建笔记失败', body: err.message }))
       }
       const computeDrop = (event) => {
         if (!dragNote || !notes) return null
@@ -1752,7 +1666,7 @@ window.__ModuleLoader__.load({
         const index = paths.indexOf(next.path)
         if (index === -1) return
         paths.splice(index + (next.side === 'after' ? 1 : 0), 0, from)
-        api('note.reorder', { notebook: name, paths }).then(() => load()).catch((err) => pushToast?.({ title: '排序没保存', body: err.message }))
+        api('note.reorder', { notebook: name, paths }).then(() => load()).catch((err) => notifySurface?.({ title: '排序保存失败', body: err.message }))
       }
       return h('div', { className: 'dsan-page dsan-notebook-page' },
         h('div', { className: 'dsan-note-head' },
@@ -1825,7 +1739,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------------ 日历页
 
-    function DiaryView({ state, onOpenDoc, pushToast, onSettings }) {
+    function DiaryView({ state, onOpenDoc, notifySurface, onSettings }) {
       const now = new Date()
       const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1))
       const double = state.settings?.calendar !== 'single'
@@ -1837,11 +1751,11 @@ window.__ModuleLoader__.load({
         api('diary.open', { date }).then((res) => {
           if (res.found) { onOpenDoc(res.doc, date, res.heading); return }
           if (date === state.diary.today) {
-            api('diary.ensureDay', { date }).then((made) => onOpenDoc(made.doc, date, headingFor(date))).catch((err) => pushToast?.({ title: '打不开', body: err.message }))
+            api('diary.ensureDay', { date }).then((made) => onOpenDoc(made.doc, date, headingFor(date))).catch((err) => notifySurface?.({ title: '打开日记失败', body: err.message }))
             return
           }
-          pushToast?.({ title: '这天没有日记', body: '没有记录的日子打不开。' })
-        }).catch((err) => pushToast?.({ title: '打不开', body: err.message }))
+          notifySurface?.({ title: '这天没有日记', body: '没有记录的日子打不开。' })
+        }).catch((err) => notifySurface?.({ title: '打开日记失败', body: err.message }))
       }
       return h('div', { className: 'dsan-page' },
         h('div', { className: 'dsan-note-head' },
@@ -1859,7 +1773,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dsan-kbd', style: { marginTop: 18 } }, '点有记录的日期打开当天笔记；今天还没写也可以点开。'))
     }
 
-    function DiaryDocView({ state, doc, date, heading, onBack, onOpenNote, pushToast, refresh, nonce }) {
+    function DiaryDocView({ state, doc, date, heading, onBack, onOpenNote, notifySurface, refresh, nonce }) {
       const [note, setNote] = useState(null)
       const [editing, setEditing] = useState(false)
       const [conflict, setConflict] = useState(null)
@@ -1873,7 +1787,7 @@ window.__ModuleLoader__.load({
         prevDoc.current = doc
         if (!changed && editing) return
         if (changed) setEditing(false)
-        api('diary.doc', { doc }).then((data) => { setNote(data); localBody.current = data.body }).catch((err) => pushToast?.({ title: '打不开日记', body: err.message }))
+        api('diary.doc', { doc }).then((data) => { setNote(data); localBody.current = data.body }).catch((err) => notifySurface?.({ title: '打开日记失败', body: err.message }))
       }, [doc, nonce])
       useEffect(() => {
         if (!note || editing) return
@@ -1900,11 +1814,11 @@ window.__ModuleLoader__.load({
           const body = m[2].split('  → ')[0]
           return (state.captures || []).find((capture) => capture.date === date && capture.time === m[1] && body.startsWith(String(capture.text).slice(0, 10)))
         },
-        onCapture: (capture) => onCaptureAction(capture, { state, pushToast, refresh, onOpenNote }),
+        onCapture: (capture) => onCaptureAction(capture, { state, notifySurface, refresh, onOpenNote }),
         onOpenNote: (target) => {
           const clean = target.replace(/^\.\//, '')
           if (clean.endsWith('.md')) onOpenNote(clean)
-          else pushToast?.({ title: '只会打开笔记', body: clean })
+          else notifySurface?.({ title: '暂不支持此链接', body: clean })
         },
         onRefresh: refresh,
       }
@@ -1921,123 +1835,13 @@ window.__ModuleLoader__.load({
           h('button', { className: 'dsan-btn small', onClick: () => { setConflict(null); api('diary.doc', { doc }).then(setNote) } }, '载入磁盘版本'),
           h('button', { className: 'dsan-btn small primary', onClick: () => { const keep = localBody.current; setConflict(null); api('note.save', { path: doc, content: keep }).then(() => api('diary.doc', { doc }).then((data) => { setNote(data); localBody.current = data.body })) } }, '保留我的')) : null,
         editing
-          ? h(NoteEditor, { note, onSaved: refresh, pushToast, onConflict: setConflict, onRegister: (fn) => { editorFlush.current = fn }, onDirty: (text) => { localBody.current = text } })
+          ? h(NoteEditor, { note, onSaved: refresh, notifySurface, onConflict: setConflict, onRegister: (fn) => { editorFlush.current = fn }, onDirty: (text) => { localBody.current = text } })
           : h(Markdown, { text: note.body, opts }))
     }
 
-    function onCaptureAction(capture, { pushToast, refresh, onOpenNote }) {
+    function onCaptureAction(capture, { notifySurface }) {
       if (!capture) return
-      if (capture.status === 'failed') {
-        pushToast({
-          title: '这条没有归档成功', body: capture.error || '',
-          actions: [
-            { label: '重试', primary: true, onClick: () => api('capture.retry', { id: capture.id }).then(refresh).catch(() => { }) },
-          ],
-        })
-        return
-      }
-      if (capture.status === 'archived' && capture.needsRewrite) {
-        pushToast({
-          title: '这条能更顺一些', body: capture.rewrite?.reason || '模型建议把附近的段落一起整理。',
-          actions: [
-            { label: '看看怎么改', primary: true, onClick: () => window.dispatchEvent(new CustomEvent('dsan-rewrite', { detail: capture })) },
-            { label: '暂不', onClick: () => { } },
-          ],
-        })
-        return
-      }
-      if (capture.noteFile) {
-        pushToast({
-          title: capture.createdNotebook ? `已归入新笔记本「${capture.notebook}」` : `已归入「${capture.notebook}」`,
-          body: capture.noteFile,
-          actions: [
-            { label: '查看', onClick: () => onOpenNote(capture.noteFile) },
-            { label: '修改笔记本', onClick: () => window.dispatchEvent(new CustomEvent('dsan-move', { detail: capture })) },
-            capture.createdNotebook ? { label: '修改主题', onClick: () => window.dispatchEvent(new CustomEvent('dsan-rename-nb', { detail: capture.notebook })) } : null,
-          ].filter(Boolean),
-        })
-        return
-      }
-      pushToast({ title: '这条还在日记里', body: capture.text, actions: [{ label: '归档', primary: true, onClick: () => api('capture.retry', { id: capture.id }).then(refresh).catch(() => { }) }] })
-    }
-
-    // ------------------------------------------------------------------ 移动与改写
-
-    function MoveModal({ capture, state, onClose, pushToast, refresh, onChanged }) {
-      const [notebook, setNotebook] = useState(capture.notebook || '')
-      const [newNotebook, setNewNotebook] = useState(false)
-      const [newName, setNewName] = useState('')
-      const [autoPick, setAutoPick] = useState(true)
-      const [notes, setNotes] = useState([])
-      const [notePath, setNotePath] = useState('')
-      useEffect(() => {
-        if (!notebook || autoPick) { setNotes([]); setNotePath(''); return }
-        api('notebook.notes', { name: notebook }).then((data) => setNotes(data.notes)).catch(() => setNotes([]))
-      }, [notebook, autoPick])
-      const submit = () => {
-        const target = newNotebook ? newName.trim() : notebook
-        if (!target) { pushToast?.({ title: newNotebook ? '先给新笔记本起个名字' : '先选一个笔记本' }); return }
-        api('capture.move', { id: capture.id, notebook: target, path: autoPick ? '' : notePath })
-          .then((res) => {
-            if (res?.ok === false) throw new Error(res.error || '没有搬成')
-            onClose(); onChanged?.(); refresh(); pushToast?.({ title: '已改到「' + target + '」' })
-          })
-          .catch((err) => pushToast?.({ title: '没搬成', body: err.message }))
-      }
-      return h(Modal, {
-        title: '修改这条记录的位置', onClose,
-        footer: [h('button', { key: 'c', className: 'dsan-btn', onClick: onClose }, '取消'),
-        h('button', { key: 'ok', className: 'dsan-btn primary', onClick: submit }, '搬过去')],
-      },
-        h(Field, { label: '笔记本' }, h('select', {
-          value: newNotebook ? '__new__' : notebook,
-          onChange: (event) => {
-            const value = event.target.value
-            if (value === '__new__') { setNewNotebook(true); setNotebook('') }
-            else { setNewNotebook(false); setNotebook(value) }
-          },
-        },
-          h('option', { value: '' }, '选一本'),
-          state.notebooks.map((nb) => h('option', { key: nb.name, value: nb.name }, nb.name)),
-          h('option', { value: '__new__' }, '新建笔记本…'))),
-        newNotebook ? h(Field, { label: '新笔记本名' }, h('input', {
-          value: newName, autoFocus: true,
-          onChange: (event) => setNewName(event.target.value),
-          placeholder: '例如 装修、读书、旅行',
-        })) : null,
-        h('div', { style: { marginBottom: 10 } },
-          h(Switch, { checked: autoPick, onChange: setAutoPick, label: '让模型在这本里挑笔记' })),
-        autoPick ? null : h(Field, { label: '笔记' }, h('select', { value: notePath, onChange: (event) => setNotePath(event.target.value) },
-          h('option', { value: '' }, '新建一篇'),
-          notes.map((note) => h('option', { key: note.path, value: note.path }, note.title)))))
-    }
-
-    function RewriteModal({ capture, state, onClose, pushToast, refresh, onChanged }) {
-      const [note, setNote] = useState(null)
-      useEffect(() => {
-        api('note.read', { path: capture.noteFile }).then((data) => setNote(data)).catch(() => setNote(null))
-      }, [capture.id])
-      const confirm = () => {
-        api('capture.confirmRewrite', { id: capture.id }).then(() => {
-          onClose(); onChanged?.(); refresh()
-          pushToast({
-            title: '已经整篇改写',
-            actions: [{
-              label: '撤销',
-              onClick: () => api('capture.undoRewrite', { id: capture.id }).then(() => { refresh(); onChanged?.() }).catch(() => { }),
-            }],
-          })
-        }).catch((err) => pushToast?.({ title: '改写失败', body: err.message }))
-      }
-      return h(Modal, {
-        title: '模型建议整理这篇笔记', onClose, wide: true,
-        footer: [h('button', { key: 'c', className: 'dsan-btn', onClick: onClose }, '暂不'),
-        h('button', { key: 'ok', className: 'dsan-btn primary', onClick: confirm }, '确认改写')],
-      },
-        h('p', { style: { marginTop: 0, color: 'var(--dsw-alias-label-secondary)' } }, capture.rewrite?.reason || '追加之后读起来不太顺。'),
-        h('div', { className: 'dsan-panes' },
-          h('div', null, h('div', { className: 'dsan-sec-title' }, '现在的原文'), h('div', { className: 'dsan-pane' }, note?.body || '读取中…')),
-          h('div', null, h('div', { className: 'dsan-sec-title' }, '改写之后'), h('div', { className: 'dsan-pane add' }, splitFront(capture.rewrite?.content || '').body || '没有可用的改写内容'))))
+      api('surface.capture', { captureId: capture.id }).catch((err) => notifySurface({ title: '无法查看归档记录', body: err.message }))
     }
 
     // ------------------------------------------------------------------ 弹窗
@@ -2072,7 +1876,7 @@ window.__ModuleLoader__.load({
         }))
     }
 
-    function NotebookModal({ initial, onClose, onSaved, onDeleted, pushToast, scale = 1 }) {
+    function NotebookModal({ initial, onClose, onSaved, onDeleted, notifySurface, scale = 1 }) {
       const [draft, setDraft] = useState({
         name: initial?.name || '',
         description: initial?.description || '',
@@ -2139,7 +1943,7 @@ window.__ModuleLoader__.load({
             onSaved?.(res.notebook)
           }
         } catch (err) {
-          pushToast?.({ title: '没保存上', body: err.message })
+          notifySurface?.({ title: '笔记本保存失败', body: err.message })
         } finally {
           saving.current = false
           if (dirty.current) { dirty.current = false; saveNow() }
@@ -2178,7 +1982,7 @@ window.__ModuleLoader__.load({
         }
         api('notebook.setCover', { name: currentName.current, dataUrl })
           .then((res) => { setCover(res.cover); onSaved?.({ name: currentName.current, ...draftRef.current }) })
-          .catch((err) => pushToast?.({ title: '封面没存上', body: err.message }))
+          .catch((err) => notifySurface?.({ title: '封面保存失败', body: err.message }))
       }
 
       const clearCover = () => {
@@ -2201,25 +2005,14 @@ window.__ModuleLoader__.load({
           setConfirmDelete(false)
           if (onDeleted) onDeleted()
           else { onClose(); onSaved?.(null) }
-          pushToast?.({
-            title: '笔记本已进废纸篓',
-            actions: [{
-              label: '撤销',
-              onClick: () => api('trash.restore', { trash: res.trash, target: name })
-                .then(() => api('notebook.create', {
-                  name,
-                  description: draftRef.current.description,
-                  keywords: draftRef.current.keywords,
-                  agentRules: draftRef.current.agentRules,
-                  manualRules: draftRef.current.manualRules,
-                  private: draftRef.current.private,
-                }))
-                .then(() => onSaved?.(null))
-                .catch(() => { }),
-            }],
+          notifySurface?.({
+            title: '笔记本已移入废纸篓',
+            actions: [{ id: 'undo', label: '撤销', type: 'restore-trash', trash: res.trash, target: name,
+              notebookMeta: { name, description: draftRef.current.description, keywords: draftRef.current.keywords,
+                agentRules: draftRef.current.agentRules, manualRules: draftRef.current.manualRules, private: draftRef.current.private } }],
           })
         } catch (err) {
-          pushToast?.({ title: '删除失败', body: err.message })
+          notifySurface?.({ title: '删除失败', body: err.message })
         }
       }
 
@@ -2305,7 +2098,7 @@ window.__ModuleLoader__.load({
         children)
     }
 
-    function SettingsModal({ state, onClose, ctx, pushToast, refresh, onRootChanged, onReviewPending }) {
+    function SettingsModal({ state, onClose, ctx, notifySurface, refresh, onRootChanged, onReviewPending }) {
       const [mcpToken, setMcpToken] = useState(state.settings?.mcpToken || '')
       const [mcpVisible, setMcpVisible] = useState(false)
       const [autoArchive, setAutoArchive] = useState(state.settings?.autoArchive !== false)
@@ -2316,9 +2109,9 @@ window.__ModuleLoader__.load({
       const [reactMaxRounds, setReactMaxRounds] = useState(state.settings?.reactMaxRounds || 20)
       const [agentEngine, setAgentEngine] = useState(state.settings?.agentEngine === 'json' ? 'json' : 'native')
       const [agentShadow, setAgentShadow] = useState(state.settings?.agentShadow === true)
-      const [toolResultMaxChars, setToolResultMaxChars] = useState(state.settings?.toolResultMaxChars || 20000)
-      const [webFetchMaxChars, setWebFetchMaxChars] = useState(state.settings?.webFetchMaxChars || 16000)
-      const [readNoteMaxChars, setReadNoteMaxChars] = useState(state.settings?.readNoteMaxChars || 20000)
+      const [toolResultMaxChars, setToolResultMaxChars] = useState(state.settings?.toolResultMaxChars ?? 0)
+      const [webFetchMaxChars, setWebFetchMaxChars] = useState(state.settings?.webFetchMaxChars ?? 0)
+      const [readNoteMaxChars, setReadNoteMaxChars] = useState(state.settings?.readNoteMaxChars ?? 0)
       const [webTimeoutMs, setWebTimeoutMs] = useState(state.settings?.webTimeoutMs || 60000)
       const [agentLogRetentionDays, setAgentLogRetentionDays] = useState(state.settings?.agentLogRetentionDays || 7)
       const [agentLogCleanupIntervalDays, setAgentLogCleanupIntervalDays] = useState(state.settings?.agentLogCleanupIntervalDays || 30)
@@ -2356,12 +2149,13 @@ window.__ModuleLoader__.load({
 
       const [background, setBackground] = useState(state.homeBackground || '')
       const [uiScale, setUiScale] = useState(normalizeUiScale(state.settings?.uiScale))
+      const [surfaceRetention, setSurfaceRetention] = useState(state.settings?.surfaceRetentionSeconds ?? 60)
       const [cropFile, setCropFile] = useState(null)
       const configTimer = useRef(null)
       const patchSettings = (patch, after) => {
         api('settings.save', patch)
           .then(() => { refresh(); after?.() })
-          .catch((err) => pushToast?.({ title: '没存上', body: err.message }))
+          .catch((err) => notifySurface?.({ title: '设置保存失败', body: err.message }))
       }
       const patchSoon = (patch) => {
         clearTimeout(configTimer.current)
@@ -2396,7 +2190,7 @@ window.__ModuleLoader__.load({
         const file = event.target.files?.[0]
         event.target.value = ''
         if (!file) return
-        if (file.size > 8 * 1024 * 1024) { pushToast?.({ title: '音频不能超过 8MB' }); return }
+        if (file.size > 8 * 1024 * 1024) { notifySurface?.({ title: '音频不能超过 8MB' }); return }
         const reader = new FileReader()
         reader.onload = () => {
           api('settings.soundUpload', { dataUrl: reader.result, name: file.name })
@@ -2404,23 +2198,23 @@ window.__ModuleLoader__.load({
               setReminderSoundFile(res.file)
               refresh()
             })
-            .catch((err) => pushToast?.({ title: '音效没存上', body: err.message }))
+            .catch((err) => notifySurface?.({ title: '音效保存失败', body: err.message }))
         }
-        reader.onerror = () => pushToast?.({ title: '读不了这个音频文件' })
+        reader.onerror = () => notifySurface?.({ title: '音频读取失败' })
         reader.readAsDataURL(file)
       }
       const trySpeech = () => {
         if (!speakReminder('这是一条朗读测试，提醒内容会用系统语音读出来。', reminderVoiceGender, reminderSpeechVolume)) {
-          pushToast?.({ title: '当前环境不支持语音朗读' })
+          notifySurface?.({ title: '当前环境不支持语音朗读' })
         }
       }
       const trySound = () => {
         try {
           const audio = new Audio(soundUrl(reminderSoundFile || 'default'))
           audio.volume = Math.max(0.01, Math.min(1, reminderSoundVolume / 100))
-          audio.play().catch((err) => pushToast?.({ title: '无法播放音效', body: err.message }))
+          audio.play().catch((err) => notifySurface?.({ title: '无法播放音效', body: err.message }))
         } catch (err) {
-          pushToast?.({ title: '无法播放音效', body: err.message })
+          notifySurface?.({ title: '无法播放音效', body: err.message })
         }
       }
       const changeSystemNotifications = (next) => {
@@ -2436,7 +2230,7 @@ window.__ModuleLoader__.load({
         setCropFile(null)
         api('home.setBackground', { dataUrl })
           .then((res) => { setBackground(res.background); refresh() })
-          .catch((err) => pushToast?.({ title: '背景没存上', body: err.message }))
+          .catch((err) => notifySurface?.({ title: '背景保存失败', body: err.message }))
       }
       const pick = async () => {
         try {
@@ -2447,7 +2241,7 @@ window.__ModuleLoader__.load({
           onRootChanged?.()
           onClose()
           refresh()
-        } catch (err) { pushToast?.({ title: '选目录失败', body: err.message }) }
+        } catch (err) { notifySurface?.({ title: '选择目录失败', body: err.message }) }
       }
       if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyBackground, zoomScale: uiScaleFactor(state) })
       const providerOptions = providers.slice()
@@ -2461,7 +2255,7 @@ window.__ModuleLoader__.load({
           h('div', { className: 'dsan-settings-avatar-shell' },
             h('div', { className: 'dsan-settings-avatar-wrap' },
               h('img', { className: 'dsan-settings-avatar', src: pluginAsset('suiji-logo.webp'), alt: '随记 logo' })),
-            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.2.4'))),
+            h('span', { className: 'dsan-settings-ver' }, '随记 · v0.3.0'))),
         h(SettingsSection, { title: '笔记库', desc: '所有笔记、日记、便笺和提醒都存在这个目录里。' },
           h('div', { className: 'dsan-set-row' },
             h('div', { style: { fontSize: 12, lineHeight: 1.6, wordBreak: 'break-all', marginBottom: 8 } }, `当前目录：${root}`),
@@ -2509,7 +2303,12 @@ window.__ModuleLoader__.load({
                   onChange: (event) => { const next = normalizeUiScale(event.target.value); setUiScale(next); patchSettings({ uiScale: next }) },
                 }),
                 h('span', { style: { width: 46, textAlign: 'right', flex: 'none' } }, `${uiScale}%`)),
-              h('div', { className: 'dsan-set-hint' }, '整页放大：界面各区域尺寸和所有字号一起缩放。五档 100%、125%、150%、175%、200%，默认 100%。')))),
+              h('div', { className: 'dsan-set-hint' }, '整页放大：界面各区域尺寸和所有字号一起缩放。五档 100%、125%、150%、175%、200%，默认 100%。')),
+            h(Field, { label: '终态提示保留时间（秒）', hint: '成功、失败、取消及普通通知的小卡片保留时间，范围 3—600 秒。悬停、填写回复或放大时暂停；过程提示不自动消失。' }, h('input', {
+              type: 'number', min: 3, max: 600, step: 1, value: surfaceRetention,
+              onChange: (event) => setSurfaceRetention(event.target.value),
+              onBlur: () => { const value = Math.max(3, Math.min(600, Math.round(Number(surfaceRetention) || 60))); setSurfaceRetention(value); patchSettings({ surfaceRetentionSeconds: value }) },
+            })))),
 
 
         h(SettingsSection, { title: '快捷记录', desc: '顶部输入框把内容写进今日日记，再按需归档到主题笔记。' },
@@ -2545,15 +2344,15 @@ window.__ModuleLoader__.load({
                 onClick: () => {
                   const nativeFallback = () => {
                     api('system.notify', { title: '随记测试通知', body: '如果你看到这条，系统通知正常。' }).then((res) => {
-                      if (res?.sent) pushToast?.({ title: '测试通知已发送', body: '没看到的话，检查系统通知中心或专注模式' })
-                      else pushToast?.({ title: '系统通知发送失败', body: '当前系统不支持原生通知' })
-                    }).catch((err) => pushToast?.({ title: '系统通知发送失败', body: err.message }))
+                      if (res?.sent) notifySurface?.({ title: '测试通知已发送', body: '没看到的话，检查系统通知中心或专注模式' })
+                      else notifySurface?.({ title: '系统通知发送失败', body: '当前系统不支持原生通知' })
+                    }).catch((err) => notifySurface?.({ title: '系统通知发送失败', body: err.message }))
                   }
                   if (typeof Notification === 'undefined') { nativeFallback(); return }
                   const send = () => {
                     try {
                       new Notification('随记测试通知', { body: '如果你看到这条，系统通知正常。', tag: 'dsan-test' })
-                      pushToast?.({ title: '测试通知已发送', body: '没看到的话，检查系统通知中心或专注模式' })
+                      notifySurface?.({ title: '测试通知已发送', body: '没看到的话，检查系统通知中心或专注模式' })
                     } catch { nativeFallback() }
                   }
                   if (Notification.permission === 'granted') send()
@@ -2581,7 +2380,7 @@ window.__ModuleLoader__.load({
               h('button', { className: 'dsan-btn small', onClick: trySound }, '试听'),
               h('button', {
                 className: 'dsan-btn small',
-                onClick: () => api('settings.save', { reminderSoundFile: '' }).then(() => { setReminderSoundFile(''); refresh() }).catch((err) => pushToast?.({ title: '没存上', body: err.message })),
+                onClick: () => api('settings.save', { reminderSoundFile: '' }).then(() => { setReminderSoundFile(''); refresh() }).catch((err) => notifySurface?.({ title: '设置保存失败', body: err.message })),
               }, '使用默认')),
             h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 11.5, color: 'var(--dsw-alias-label-secondary)' } },
               h('span', null, '音效音量'),
@@ -2637,15 +2436,16 @@ window.__ModuleLoader__.load({
           })),
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, '默认 20 轮；复杂任务可调高，但会更慢、更耗 token。'),
           h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 } },
-            h(Field, { label: '工具结果字符' }, h('input', { type: 'number', min: 1000, max: 200000, value: toolResultMaxChars, onChange: (event) => { const next = Number(event.target.value); setToolResultMaxChars(next); patchSoon({ toolResultMaxChars: next }) } })),
-            h(Field, { label: '网页正文字符' }, h('input', { type: 'number', min: 1000, max: 200000, value: webFetchMaxChars, onChange: (event) => { const next = Number(event.target.value); setWebFetchMaxChars(next); patchSoon({ webFetchMaxChars: next }) } })),
-            h(Field, { label: '单次读取字符' }, h('input', { type: 'number', min: 1000, max: 200000, value: readNoteMaxChars, onChange: (event) => { const next = Number(event.target.value); setReadNoteMaxChars(next); patchSoon({ readNoteMaxChars: next }) } }))),
+            h(Field, { label: '工具结果上限（0 不限）' }, h('input', { type: 'number', min: 0, step: 1, value: toolResultMaxChars, onChange: (event) => { const next = Number(event.target.value); setToolResultMaxChars(next); patchSoon({ toolResultMaxChars: next }) } })),
+            h(Field, { label: '网页正文上限（0 不限）' }, h('input', { type: 'number', min: 0, step: 1, value: webFetchMaxChars, onChange: (event) => { const next = Number(event.target.value); setWebFetchMaxChars(next); patchSoon({ webFetchMaxChars: next }) } })),
+            h(Field, { label: '笔记读取上限（0 不限）' }, h('input', { type: 'number', min: 0, step: 1, value: readNoteMaxChars, onChange: (event) => { const next = Number(event.target.value); setReadNoteMaxChars(next); patchSoon({ readNoteMaxChars: next }) } }))),
+          h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, '以上字符上限默认 0（不限）。非 0 时按保存的设置处理，并在模型收到的内容中标明截断；服务商自身的上下文与输出上限仍然有效。'),
           h(Field, { label: '网页抓取超时（毫秒）' }, h('input', { type: 'number', min: 1000, max: 300000, value: webTimeoutMs, onChange: (event) => { const next = Number(event.target.value); setWebTimeoutMs(next); patchSoon({ webTimeoutMs: next }) } })),
           h('div', { style: { fontWeight: 600, fontSize: 12, margin: '14px 0 8px' } }, '日志'),
           h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 } },
             h(Field, { label: '日志保留天数' }, h('input', { type: 'number', min: 1, max: 3650, value: agentLogRetentionDays, onChange: (event) => { const next = Number(event.target.value); setAgentLogRetentionDays(next); patchSoon({ agentLogRetentionDays: next }) } })),
             h(Field, { label: '自动清理间隔（天）' }, h('input', { type: 'number', min: 1, max: 3650, value: agentLogCleanupIntervalDays, onChange: (event) => { const next = Number(event.target.value); setAgentLogCleanupIntervalDays(next); patchSoon({ agentLogCleanupIntervalDays: next }) } }))),
-          h('button', { type: 'button', className: 'dsan-btn small', onClick: async () => { try { const res = await api('agent.logs.cleanup', { days: agentLogRetentionDays }); pushToast({ title: `已清理 ${res.removed || 0} 份日志` }) } catch (err) { pushToast({ title: '清理失败', body: err.message }) } } }, '立即清理旧日志'),
+          h('button', { type: 'button', className: 'dsan-btn small', onClick: async () => { try { const res = await api('agent.logs.cleanup', { days: agentLogRetentionDays }); notifySurface({ title: `已清理 ${res.removed || 0} 份日志` }) } catch (err) { notifySurface({ title: '日志清理失败', body: err.message }) } } }, '立即清理旧日志'),
           h('div', { style: { fontWeight: 600, fontSize: 12, margin: '14px 0 8px' } }, '模型选择'),
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 10 } }, 'provider 和 model 从 DSH 已注册的模型服务读取；API Key、Base URL、协议先在 DSH 模型设置里配好。两项都选好才生效。'),
           h('div', { style: { display: 'flex', justifyContent: 'flex-end', marginBottom: 8 } },
@@ -2687,14 +2487,14 @@ window.__ModuleLoader__.load({
               })),
           h('div', { className: 'dsan-set-hint' }, 'provider 是服务商标识，model 是具体模型 ID，不是展示名称。')),
 
-        h(SettingsSection, { title: '外部连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。安装 Skill 后，其他 AI 可按说明连接。', action: h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => pushToast({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => pushToast({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill') },
+        h(SettingsSection, { title: '外部连接', desc: '外部 AI 通过该地址调用随记；写入会直接落盘。安装 Skill 后，其他 AI 可按说明连接。', action: h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.skill.install').then(({ path }) => notifySurface({ title: 'Skill 已安装', body: path, duration: 8000 })).catch((err) => notifySurface({ title: 'Skill 安装失败', body: err.message })) }, '安装 Skill') },
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 8, wordBreak: 'break-all' } }, mcpUrl),
           h('div', { className: 'dsan-set-hint', style: { marginBottom: 8 } }, '仅监听本机。Token 等同于直接写入权限，只提供给可信的 AI 客户端。'),
           h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 } },
             h('code', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, mcpVisible ? mcpToken : '••••••••••••'),
             h('button', { type: 'button', className: 'dsan-btn small', onClick: () => setMcpVisible((value) => !value) }, mcpVisible ? '隐藏' : '显示'),
-            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => pushToast({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
-            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); pushToast({ title: 'Token 已重新生成' }) }).catch((err) => pushToast({ title: '生成失败', body: err.message })) }, '重新生成'))),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => navigator.clipboard?.writeText(mcpToken).then(() => notifySurface({ title: 'Token 已复制' })).catch(() => { }) }, '复制'),
+            h('button', { type: 'button', className: 'dsan-btn small', onClick: () => api('mcp.token.regenerate').then(({ token }) => { setMcpToken(token); setMcpVisible(true); notifySurface({ title: 'Token 已重新生成' }) }).catch((err) => notifySurface({ title: 'Token 生成失败', body: err.message })) }, '重新生成'))),
         h(SettingsSection, { title: '数据与隐私', desc: '删除的笔记和笔记本会先进废纸篓，超过保留天数才真正清理。' },
           h(Field, { label: '废纸篓保留天数' }, h('input', {
             type: 'number', min: 1, max: 365, value: trashDays,
@@ -2735,15 +2535,15 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function DiaryCoverModal({ state, onClose, pushToast, refresh }) {
+    function DiaryCoverModal({ state, onClose, notifySurface, refresh }) {
       const [cover, setCover] = useState(state.diaryCover || '')
       const [calendar, setCalendar] = useState(state.settings?.calendar || 'double')
       const [cropFile, setCropFile] = useState(null)
       const changeCalendar = (value) => {
         setCalendar(value)
         api('settings.save', { calendar: value })
-          .then(() => { pushToast?.({ title: '日历显示已更新' }); refresh() })
-          .catch((err) => pushToast?.({ title: '没存上', body: err.message }))
+          .then(() => { notifySurface?.({ title: '日历显示已更新' }); refresh() })
+          .catch((err) => notifySurface?.({ title: '设置保存失败', body: err.message }))
       }
       const pick = (event) => {
         const file = event.target.files?.[0]
@@ -2753,8 +2553,8 @@ window.__ModuleLoader__.load({
       const applyCover = (dataUrl) => {
         setCropFile(null)
         api('diary.setCover', { dataUrl })
-          .then((res) => { setCover(res.cover); pushToast?.({ title: '日记背景已更新' }); refresh() })
-          .catch((err) => pushToast?.({ title: '日记背景没存上', body: err.message }))
+          .then((res) => { setCover(res.cover); notifySurface?.({ title: '日记背景已更新' }); refresh() })
+          .catch((err) => notifySurface?.({ title: '日记背景保存失败', body: err.message }))
       }
       const clear = () => api('diary.clearCover').then(() => { setCover(''); refresh() }).catch(() => { })
       if (cropFile) return h(ImageCropper, { file: cropFile, onCancel: () => setCropFile(null), onDone: applyCover, zoomScale: uiScaleFactor(state) })
@@ -2899,7 +2699,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'dsan-crop-hint' }, '拖动选框移动，拖边角改变长宽；比例不限。'))
     }
 
-    function Setup({ ctx, onDone, pushToast }) {
+    function Setup({ ctx, onDone, notifySurface }) {
       const [busy, setBusy] = useState(false)
       const choose = async () => {
         setBusy(true)
@@ -2909,7 +2709,7 @@ window.__ModuleLoader__.load({
           await api('pickRoot', { path: picked })
           onDone()
         } catch (err) {
-          pushToast?.({ title: '没选成', body: err.message })
+          notifySurface?.({ title: '选择笔记目录失败', body: err.message })
         } finally { setBusy(false) }
       }
       return h('div', { className: 'dsan-setup' },
@@ -2953,65 +2753,98 @@ window.__ModuleLoader__.load({
             : null))
     }
 
-    function AgentSurfaceView({ surface, onClose, onAnswer, stackIndex = 0 }) {
-      const [text, setText] = useState('')
-      const question = surface || {}
-      const options = question.options || []
-      const displayTitle = question.kind === 'progress'
-        ? `Agent 正在执行：${String(question.title || '处理任务').replace(/^Agent\s*正在执行[:：]\s*/, '')}`
-        : (question.title || 'Agent 需要你确认')
-      if (question.type === 'toast') {
-        return h('div', { className: 'dsan-surface-toast' + (question.kind === 'progress' ? ' dsan-surface-progress' : '') },
-          h('div', { className: 'tt' }, displayTitle),
-          question.kind === 'progress' ? h('div', { className: 'dsan-progress-row' }, h('span', { className: 'dsan-spinner' }), '进行中') : null,
-          h('div', { className: 'tb' }, question.body || question.question || ''),
-          h('button', { type: 'button', className: 'x', onClick: onClose, 'aria-label': '关闭' }, '×'),
-          h('div', { className: 'ta' }, options.map((option) => h('button', {
-            key: option.id, type: 'button', className: 'dsan-btn small', title: option.description || '',
-            onClick: () => onAnswer({ optionId: option.id, label: option.label, text: '' }),
-          }, option.label))))
-      }
-      return h(Modal, { title: displayTitle, wide: true, onClose },
-        h('div', { className: 'dsan-agent-prev', style: { whiteSpace: 'pre-wrap' } }, question.body || question.question || ''),
-        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 } },
-          options.map((option) => h('button', {
-            key: option.id, type: 'button', className: 'dsan-btn', title: option.description || '',
-            onClick: () => onAnswer({ optionId: option.id, label: option.label, text }),
-          }, option.label))),
-        question.allowFreeText ? h(Field, { label: '补充说明' }, h('textarea', {
-          className: 'dsan-editor', rows: 3, value: text,
-          onChange: (event) => setText(event.target.value),
-          onKeyDown: (event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && text.trim()) onAnswer({ optionId: 'text', label: text.trim(), text }) },
-        })) : null,
-        question.allowFreeText ? h('button', {
-          type: 'button', className: 'dsan-btn primary', disabled: !text.trim(),
-          onClick: () => onAnswer({ optionId: 'text', label: text.trim(), text }),
-        }, '发送') : null)
+    function SurfaceSizeIcon({ large }) {
+      return h('svg', {
+        width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none',
+        stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round',
+        'aria-hidden': true, focusable: false,
+      }, h('path', { d: large
+        ? 'M3 8h5V3 M16 3v5h5 M3 16h5v5 M16 21v-5h5'
+        : 'M8 3H3v5 M16 3h5v5 M3 16v5h5 M21 16v5h-5' }))
     }
 
-    function AgentReplyModal({ thread, onClose, onSend }) {
-      const [text, setText] = useState('')
-      const send = () => {
-        const value = text.trim()
-        if (!value) return
-        onSend(value)
+    function SurfaceCard({ surface, compact, command, onAction }) {
+      const [text, setText] = useState(surface.draft || '')
+      const [editing, setEditing] = useState(Boolean(surface.draft))
+      const [busy, setBusy] = useState(false)
+      const [error, setError] = useState('')
+      const [feedback, setFeedback] = useState('')
+      const editor = useRef(null)
+      const hover = useRef(false)
+      const pendingDraft = useRef(Promise.resolve())
+      const focusRequested = useRef(false)
+      const large = surface.size === 'large'
+      const labels = { queued: '等待处理', running: '处理中', waiting_user: '等待回答', waiting_confirmation: '等待确认', succeeded: '已完成', failed: '失败', cancelled: '已取消' }
+      const waiting = ['waiting_user', 'waiting_confirmation'].includes(surface.status)
+      const terminal = ['succeeded', 'failed', 'cancelled'].includes(surface.status)
+      useEffect(() => {
+        if (document.activeElement !== editor.current) setText(surface.draft || '')
+      }, [surface.draft])
+      useEffect(() => {
+        if (large && focusRequested.current && editor.current) { editor.current.focus(); focusRequested.current = false }
+      }, [large, editing])
+      useEffect(() => {
+        const timer = setInterval(() => { if (hover.current) command('surface.present', { surfaceId: surface.id, hover: true, attempt: surface.attempt }).catch(() => {}) }, 5000)
+        return () => { clearInterval(timer); if (hover.current) command('surface.present', { surfaceId: surface.id, hover: false, attempt: surface.attempt }).catch(() => {}) }
+      }, [surface.id, surface.attempt, command])
+      const present = (patch) => command('surface.present', { surfaceId: surface.id, attempt: surface.attempt, ...patch }).catch((err) => setError(err.message))
+      const draft = (value) => {
+        setText(value)
+        pendingDraft.current = pendingDraft.current.catch(() => {}).then(() => command('surface.present', { surfaceId: surface.id, attempt: surface.attempt, draft: value }))
+        pendingDraft.current.catch((err) => setError(err.message))
       }
-      return h(Modal, {
-        title: '继续回复 agent', wide: true, onClose,
-        footer: [
-          h('button', { key: 'c', className: 'dsan-btn', onClick: onClose }, '取消'),
-          h('button', { key: 'ok', className: 'dsan-btn primary', onClick: send }, '发送'),
-        ],
+      const act = async (action) => {
+        if (busy) return
+        if (action.type === 'reply' && terminal && !editing) {
+          setEditing(true); focusRequested.current = true
+          await present({ size: 'large' })
+          if (editor.current) editor.current.focus()
+          return
+        }
+        if ((action.type === 'reply' || action.id === 'reply') && !text.trim()) return
+        setBusy(true); setError('')
+        try {
+          await pendingDraft.current
+          const out = await onAction(surface, action, text)
+          if (out?.processing) { setFeedback('正在处理，请勿重复提交'); return }
+          if (out?.clipboard) setFeedback('日志已复制')
+          if (['reply', 'agent-answer', 'capture-answer', 'agent-followup'].includes(action.type)) {
+            setText(''); setEditing(false)
+            await present({ draft: '', attempt: out?.currentSurface?.attempt ?? surface.attempt })
+          }
+        } catch (err) { setError(err.message) } finally { setBusy(false) }
+      }
+      return h('section', { className: cls('dsan-surface-card', large && 'large', compact && 'compact'), 'aria-label': surface.title,
+        onMouseEnter: () => { hover.current = true; present({ hover: true }) },
+        onMouseLeave: () => { hover.current = false; present({ hover: false }) },
       },
-        h('div', { className: 'dsan-agent-prev' }, thread?.reply || '还没有可回复的内容'),
-        h(Field, { label: '你的回复' }, h('textarea', {
-          className: 'dsan-editor', rows: 4, value: text, autoFocus: true,
-          onChange: (event) => setText(event.target.value),
-          onKeyDown: (event) => {
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); send() }
-          },
-          placeholder: '例如：A，或者先按方案 A 改，再告诉我需要保留的图片',
-        })))
+        h('div', { className: 'dsan-surface-head' },
+          h('div', { className: 'dsan-surface-title' }, surface.title),
+          h('button', { type: 'button', className: 'dsan-surface-size', title: large ? '缩小卡片' : '放大卡片', 'aria-label': large ? '缩小卡片' : '放大卡片',
+            onClick: () => present({ size: large ? 'small' : 'large' }) }, h(SurfaceSizeIcon, { large }))),
+        h('div', { className: 'dsan-surface-state', 'aria-live': 'polite' },
+          !terminal && !waiting ? h('span', { className: 'dsan-spinner' }) : null, labels[surface.status] || ''),
+        h('div', { className: 'dsan-surface-content' },
+          h('div', { className: 'dsan-surface-body' }, surface.body),
+          large && (editing || surface.allowFreeText) ? h('textarea', {
+            ref: editor, className: 'dsan-surface-input', value: text, placeholder: '输入回复或补充说明', 'aria-label': '回复内容',
+            onChange: (event) => draft(event.target.value),
+            onKeyDown: (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); act({ id: 'reply', type: 'reply' }) } },
+          }) : null,
+          error ? h('div', { className: 'dsan-surface-error', role: 'alert' }, error) : null,
+          feedback ? h('div', { className: 'dsan-set-hint' }, feedback) : null),
+        h('div', { className: 'dsan-surface-foot' },
+          h('div', { className: 'dsan-surface-actions' },
+            (surface.actions || []).map((action) => h('button', { key: action.id, type: 'button', className: 'dsan-btn small', disabled: busy,
+              title: action.description || '', onClick: () => act(action) }, action.type === 'reply' && editing ? '发送' : action.label)),
+            waiting && surface.allowFreeText ? h('button', { type: 'button', className: 'dsan-btn small', disabled: busy || (large && !text.trim()),
+              onClick: () => {
+                if (!large) { setEditing(true); focusRequested.current = true; present({ size: 'large' }) }
+                else act({ id: 'reply', type: 'reply' })
+              } }, large ? '发送' : '回复') : null),
+          h('button', { type: 'button', className: 'dsan-surface-close', 'aria-label': waiting ? '放弃任务' : terminal ? '关闭提示' : '暂时隐藏提示',
+            title: waiting ? '放弃任务' : terminal ? '关闭提示' : '暂时隐藏，下次内容更新时重新显示', disabled: busy,
+            onClick: () => command('surface.close', { surfaceId: surface.id, attempt: surface.attempt, revision: surface.revision }).catch((err) => setError(err.message)) }, '×')))
     }
 
     class AppErrorBoundary extends React.Component {
@@ -3033,7 +2866,6 @@ window.__ModuleLoader__.load({
     function App({ ctx, onReload }) {
       const [state, setState] = useState(null)
       const [view, setView] = useState(readSavedView)
-      const [toasts, setToasts] = useState(readSavedToasts)
       const [modal, setModal] = useState(null)
       const [captureText, setCaptureText] = useState('')
       const [slashIndex, setSlashIndex] = useState(0)
@@ -3052,91 +2884,53 @@ window.__ModuleLoader__.load({
       useEffect(() => { setSlashIndex(0) }, [slashTyped])
       const [captureImages, setCaptureImages] = useState([])
       const [previewImage, setPreviewImage] = useState(null)
-      const [agentThread, setAgentThread] = useState(readSavedAgentThread)
-      const [surfaces, setSurfacesState] = useState(() => liveSurfaces.length ? liveSurfaces : readSavedSurfaces())
-      const surfacesRef = useRef(surfaces)
-      const setSurfaces = (updater) => {
-        const next = typeof updater === 'function' ? updater(surfacesRef.current) : updater
-        surfacesRef.current = next
-        publishLiveSurfaces(next)
-        setSurfacesState(next)
-      }
-      const addReviewSurface = (surface) => {
-        if (surface?.root && liveRoot && surface.root !== liveRoot) return
-        setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface])
-      }
-      useEffect(() => { saveView(view) }, [view])
-      useEffect(() => { saveToasts(toasts) }, [toasts])
-      useEffect(() => { saveAgentThread(agentThread) }, [agentThread])
-      useEffect(() => { saveSurfaces(surfaces) }, [surfaces])
+      const [surfaces, setSurfaceQueue] = useState([])
+      const contentAreaRef = useRef(null)
+      const surfaceStackRef = useRef(null)
+      useEffect(() => {
+        const el = contentAreaRef.current
+        if (!el) return
+        const update = () => el.style.setProperty('--dsan-content-height', `${el.clientHeight}px`)
+        update()
+        const observer = new ResizeObserver(update)
+        observer.observe(el)
+        return () => observer.disconnect()
+      }, [state?.configured])
+      useEffect(() => {
+        const stack = surfaceStackRef.current
+        if (!stack) return
+        const peers = [...stack.children].filter((child) => !child.classList.contains('large'))
+        const update = () => stack.style.setProperty('--dsan-peer-space', `${peers.reduce((sum, child) => sum + child.offsetHeight + 10, 0)}px`)
+        update()
+        const observer = new ResizeObserver(update)
+        peers.forEach((peer) => observer.observe(peer))
+        return () => observer.disconnect()
+      }, [state?.configured, surfaces.map((s) => `${s.id}:${s.size}`).join('|')])
+      const [surfaceError, setSurfaceError] = useState('')
+      const surfaceClientId = useRef(`window-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+      const surfaceFetch = useRef(0)
+      const refreshSurfaces = useCallback(async (open = false) => {
+        const seq = ++surfaceFetch.current
+        const data = await api(open ? 'surface.open' : 'surface.list')
+        if (seq === surfaceFetch.current) { setSurfaceQueue((data.queue || []).slice(0, 3)); setSurfaceError('') }
+        return data
+      }, [])
+      const surfaceCommand = useCallback(async (op, args = {}) => {
+        try {
+          const result = await api(op, { ...args, clientId: surfaceClientId.current })
+          const queue = await refreshSurfaces()
+          return { ...result, currentSurface: (queue.queue || []).find((item) => item.id === args.surfaceId) }
+        } catch (err) { throw err }
+      }, [refreshSurfaces])
       useEffect(() => {
         if (!state?.root) return
-        liveRoot = state.root
-        setSurfaces((prev) => prev.filter((item) => item.root ? item.root === liveRoot : !(item.pendingId || item.kind === 'confirm')))
-        setToasts((prev) => prev.filter((item) => !item.notificationId))
-      }, [state?.root])
-      useEffect(() => {
-        const timer = setInterval(() => setSurfaces((prev) => prev.filter((item) => !item.expiresAt || item.expiresAt > Date.now())), 60000)
-        return () => clearInterval(timer)
-      }, [])
-      useEffect(() => {
-        setToasts((prev) => prev.filter((toast) => toast.title !== 'agent 没跑成' && !String(toast.body || '').includes('请求失败（405）')))
-      }, [])
-      useEffect(() => {
-        api('agent.sessions').then((data) => {
-          setAgentSessionLatest((data?.sessions || [])[0] || null)
-          const waiting = (data?.sessions || []).find((session) => session.status === 'waiting')
-          const running = (data?.sessions || []).find((session) => session.status === 'running')
-          if (running?.jobId) pollAgentJob(running.jobId)
-          if (!waiting && !running) {
-            setSurfaces((prev) => prev.filter((item) => item.kind !== 'progress' && item.kind !== 'agent-wait'))
-            try { localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }
-            return
-          }
-          if (!waiting) return
-          const unsafe = (waiting.surfaces || []).filter(unsafeSurface)
-          for (const surface of unsafe) api('surface.close', { jobId: waiting.jobId, surfaceId: surface.id }).catch(() => { })
-          const restored = (waiting.surfaces || []).filter((surface) => !unsafeSurface(surface)).map((surface) => ({
-            ...surface, kind: 'agent-wait', waitingJob: waiting.jobId, allowFreeText: surface.allowFreeText !== false,
-          }))
-          if (restored.length) setSurfaces((prev) => [...prev.filter((item) => !restored.some((surface) => surface.id === item.id)), ...restored])
-        }).catch(() => { })
-      }, [])
-      useEffect(() => {
-        try { const id = localStorage.getItem('dsan-active-agent-job'); if (id) pollAgentJob(id) } catch { /* ignore */ }
-        return () => {
-          for (const timer of agentPollers.current.values()) clearInterval(timer)
-          agentPollers.current.clear()
-        }
-      }, [])
-      useEffect(() => {
-        if (!state?.captures?.some((capture) => capture.status === 'needs_input' || capture.status === 'running' || capture.status === 'needs_review')) return
-        const timer = setInterval(async () => {
-          try {
-            const next = await api('state')
-            if (next.root !== liveRoot) return
-            setState(next)
-            const pending = (next.captures || []).find((capture) => capture.question)
-            if (pending?.question) setSurfaces((prev) => prev.some((item) => item.id === pending.question.id) ? prev : [...prev, { ...pending.question, captureId: pending.id }])
-            const review = (next.captures || []).find((capture) => capture.status === 'needs_review' && capture.pendingId)
-            if (review) api('review.surface', { id: review.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch(() => { })
-            const active = (next.captures || []).find((capture) => capture.status === 'running' || capture.status === 'pending')
-            if (active) {
-              setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'capture-progress' && item.kind !== 'capture-launch'), {
-                id: `capture-progress-${active.id}`, kind: 'capture-progress', type: 'toast',
-                title: '已存入今天的日记', body: active.job?.message || '正在归档…',
-                captureId: active.id, diaryDoc: active.diaryDoc, date: active.date,
-                options: [{ id: 'view', label: '查看' }, { id: 'cancel', label: '取消归档' }],
-                actions: [
-                  { id: 'view', label: '查看', action: { type: 'view-capture', diaryDoc: active.diaryDoc, date: active.date } },
-                  { id: 'cancel', label: '取消归档', action: { type: 'cancel-capture', captureId: active.id } },
-                ],
-              }])
-            } else setSurfaces((prev) => prev.filter((item) => item.kind !== 'capture-progress'))
-          } catch { /* ignore */ }
-        }, 2500)
-        return () => clearInterval(timer)
-      }, [state?.captures])
+        let active = true
+        setSurfaceQueue([])
+        refreshSurfaces(true).catch((err) => { if (active) setSurfaceError(err.message) })
+        const timer = setInterval(() => { if (active) refreshSurfaces().catch((err) => setSurfaceError(err.message)) }, 1000)
+        return () => { active = false; clearInterval(timer); surfaceFetch.current += 1 }
+      }, [state?.root, refreshSurfaces])
+      useEffect(() => { saveView(view) }, [view])
       const [captureFocused, setCaptureFocused] = useState(false)
       const [legacyUi] = useState(readLegacyUi)
       const [todoHideDone, setTodoHideDone] = useState(() => legacyUi.todoHideDone === true)
@@ -3153,21 +2947,6 @@ window.__ModuleLoader__.load({
       const [agentSessionLatest, setAgentSessionLatest] = useState(null)
       const [diarySettings, setDiarySettings] = useState(false)
       const [todoOpen, setTodoOpen] = useState(false)
-      const [agentReplyOpen, setAgentReplyOpen] = useState(false)
-      useEffect(() => {
-        const listener = (next) => setSurfacesState(next)
-        liveSurfaceListeners.add(listener)
-        return () => liveSurfaceListeners.delete(listener)
-      }, [])
-      const agentJobRef = useRef('')
-      useEffect(() => {
-        try {
-          const saved = localStorage.getItem('dsan-active-agent-job')
-          if (saved) agentJobRef.current = saved
-        } catch { /* ignore */ }
-      }, [])
-      const surfaceResolvers = useRef(new Map())
-      const agentPollers = useRef(new Map())
       const appMountedRef = useRef(true)
       useEffect(() => () => { appMountedRef.current = false }, [])
       const [dueReminders, setDueReminders] = useState([])
@@ -3202,8 +2981,7 @@ window.__ModuleLoader__.load({
         const warn = (body) => {
           if (notificationWarned.current) return
           notificationWarned.current = true
-          setToasts((prev) => [...prev, { id: `notify-warn-${Date.now()}`, title: '系统通知没有发送', body, auto: true }].slice(-3))
-          setTimeout(() => setToasts((prev) => prev.filter((toast) => !String(toast.id).startsWith('notify-warn-'))), 8000)
+          notifySurface({ title: '系统通知发送失败', body })
         }
         const fallback = () => {
           api('system.notify', { title: '随记提醒', body: text }).then((res) => {
@@ -3300,44 +3078,15 @@ window.__ModuleLoader__.load({
         ackReminderNotice(entry)
       }
 
-      const dismiss = useCallback((id) => setToasts((prev) => prev.filter((t) => t.id !== id)), [])
-      const pushToast = useCallback((toast) => {
-        const id = String(toast.id || `${Date.now()}-${Math.random().toString(16).slice(2, 6)}`)
-        const actions = Array.isArray(toast.actions) ? toast.actions.filter(Boolean) : []
-        const onlyView = actions.length > 0 && actions.every((action) => action.label === '查看')
-        const auto = actions.length === 0 || onlyView
-        const timeout = Number.isFinite(toast.duration) ? toast.duration : 10 * 60 * 1000
-        setToasts((prev) => prev.some((item) => item.id === id) ? prev : [...prev, { ...toast, id, auto, at: toast.at || Date.now() }].slice(-3))
-        if (auto) setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), timeout)
-      }, [])
-      const notificationsInitialized = useRef(false)
-      const notificationsRoot = useRef('')
-      const seenNotifications = useRef(new Set())
-      useEffect(() => {
-        const rootKey = String(state?.root || '')
-        if (notificationsRoot.current !== rootKey) {
-          notificationsRoot.current = rootKey
-          notificationsInitialized.current = false
-          try { const list = JSON.parse(sessionStorage.getItem(`dsan.seen.notifications.${rootKey}`) || '[]'); seenNotifications.current = new Set(Array.isArray(list) ? list : []) } catch { seenNotifications.current = new Set() }
-        }
-        if (!Array.isArray(state?.notifications)) return
-        const list = state.notifications
-        const save = () => { try { sessionStorage.setItem(`dsan.seen.notifications.${rootKey}`, JSON.stringify([...seenNotifications.current])) } catch { /* ignore */ } }
-        if (!notificationsInitialized.current) { notificationsInitialized.current = true; for (const item of list) seenNotifications.current.add(item.id); save(); return }
-        let changed = false
-        for (const item of list) {
-          if (seenNotifications.current.has(item.id)) continue
-          seenNotifications.current.add(item.id); changed = true
-          pushToast({ id: `notify-${item.id}`, notificationId: item.id, title: item.title || '随记通知', body: item.body || '', duration: 8000 })
-        }
-        if (changed) save()
-      }, [state?.notifications, state?.root, pushToast])
-      useEffect(() => {
-        const timer = setInterval(async () => {
-          try { const data = await api('notifications'); setState((prev) => prev && data.root === prev.root ? { ...prev, notifications: data.items || [] } : prev) } catch { /* ignore */ }
-        }, 2000)
-        return () => clearInterval(timer)
-      }, [])
+      const notifySurface = useCallback((notice) => {
+        const failed = /失败|不能|不支持|不存在|未知|没|无法|超/.test(notice.title || '')
+        // This adapter only translates old call sites; it owns no queue/timer.
+        // Actions must be data descriptors so restoration never depends on closures.
+        const actions = (notice.actions || []).filter(Boolean).map((a, index) => ({ ...a, id: a.id || String(index) }))
+        return surfaceCommand('surface.create', { kind: 'notice', source: 'ui', state: notice.state || (failed ? 'failed' : 'succeeded'),
+          surfaceId: notice.surfaceId, eventKey: notice.eventKey, restart: notice.restart === true,
+          title: notice.title, body: notice.body || '', actions }).catch(() => {})
+      }, [surfaceCommand])
       const stateRequestSeq = useRef(0)
       const refresh = useCallback(async () => {
         const seq = ++stateRequestSeq.current
@@ -3369,6 +3118,18 @@ window.__ModuleLoader__.load({
           }
         } catch { /* ignore */ }
       }
+      useEffect(() => {
+        if (!agentSessionOpen || !agentSessionDetail?.id) return
+        const id = agentSessionDetail.id
+        let active = true
+        const timer = setInterval(async () => {
+          try {
+            const data = await api('agent.session', { id })
+            if (active) setAgentSessionDetail((prev) => prev?.id === id ? data.session : prev)
+          } catch { /* keep the last known transcript */ }
+        }, 1000)
+        return () => { active = false; clearInterval(timer) }
+      }, [agentSessionOpen, agentSessionDetail?.id])
       const openAgentSession = async (session) => {
         try {
           const detail = await api('agent.session', { id: session.id })
@@ -3418,10 +3179,6 @@ window.__ModuleLoader__.load({
         } else {
           clearLegacyUi()
         }
-      }, [state?.configured])
-      useEffect(() => {
-        if (!state || state.configured === false) return
-        api('capture.retryQueue').catch(() => { })
       }, [state?.configured])
       useEffect(() => {
         const beat = () => { api('ui.heartbeat').catch(() => { }) }
@@ -3493,7 +3250,7 @@ window.__ModuleLoader__.load({
         for (const item of items) {
           const wasDone = previous.get(item.id)
           if (wasDone === false && item.done === true && item.reminder) {
-            pushToast({
+            notifySurface({
               title: isPeriodicKind(item.reminder.kind) ? '周期定时提醒已结束' : '定时提醒已结束',
               body: item.text,
               duration: 6000,
@@ -3512,63 +3269,6 @@ window.__ModuleLoader__.load({
         }, 2500)
         return () => clearInterval(timer)
       }, [refresh, settings])
-
-      useEffect(() => {
-        if (!state?.captures) return
-        if (!prevStatus.current) {
-          prevStatus.current = new Map(state.captures.map((c) => [c.id, c.status]))
-          return
-        }
-        const prev = prevStatus.current
-        for (const capture of state.captures) {
-          const old = prev.get(capture.id)
-          if (old === 'pending' || old === 'running') {
-            if (capture.status === 'archived') {
-              bumpContent()
-              setToasts((prev) => prev.filter((toast) => toast.key !== `capture:${capture.id}`))
-              if (capture.needsRewrite) {
-                pushToast({
-                  title: '归档好了，可以更顺一些', body: capture.rewrite?.reason || '',
-                  actions: [
-                    { label: '看看怎么改', primary: true, onClick: () => setModal({ kind: 'rewrite', capture }) },
-                    { label: '暂不', onClick: () => { } },
-                  ],
-                })
-              } else {
-                pushToast({
-                  title: capture.createdNotebook ? `已建「${capture.notebook}」并归档` : `已归档到「${capture.notebook}」`,
-                  actions: [
-                    { label: '查看', onClick: () => setView({ kind: 'note', path: capture.noteFile }) },
-                    { label: '修改笔记本', onClick: () => setModal({ kind: 'move', capture }) },
-                    ...(capture.createdNotebook ? [{ label: '修改主题', onClick: () => setModal({ kind: 'renameNotebook', name: capture.notebook }) }] : []),
-                  ],
-                })
-              }
-            } else if (capture.status === 'failed') {
-              setToasts((prev) => prev.filter((toast) => toast.key !== `capture:${capture.id}`))
-              pushToast({
-                title: '归档失败', body: capture.error || '模型没有返回结果',
-                actions: [{ label: '重试', primary: true, onClick: () => api('capture.retry', { id: capture.id }).then(refresh) }],
-              })
-            }
-          }
-          prev.set(capture.id, capture.status)
-        }
-      }, [state?.captures])
-
-      useEffect(() => {
-        const onMove = (event) => setModal({ kind: 'move', capture: event.detail })
-        const onRewrite = (event) => setModal({ kind: 'rewrite', capture: event.detail })
-        const onRename = (event) => setModal({ kind: 'renameNotebook', name: event.detail })
-        window.addEventListener('dsan-move', onMove)
-        window.addEventListener('dsan-rewrite', onRewrite)
-        window.addEventListener('dsan-rename-nb', onRename)
-        return () => {
-          window.removeEventListener('dsan-move', onMove)
-          window.removeEventListener('dsan-rewrite', onRewrite)
-          window.removeEventListener('dsan-rename-nb', onRename)
-        }
-      }, [])
 
       // 离开非首页时，把这一页的临时便笺交给首页；空便笺删掉。
       const go = (next) => {
@@ -3621,309 +3321,31 @@ window.__ModuleLoader__.load({
         return { view: 'home' }
       }
 
-      const runSurfaceAction = (surface, answer) => {
-        const entry = (surface.actions || []).find((item) => item.id === answer.optionId)
-        const action = entry?.action
-        if (!action) return false
-        const jobId = surface.waitingJob || surface.jobId || agentJobRef.current
-        if (action.type === 'confirm' || action.type === 'cancel-pending') {
-          api('surface.answer', { id: jobId, questionId: surface.id, pendingId: action.pendingId || '', ...answer }).then((res) => {
-            refresh()
-            if (action.type === 'confirm') showAgentResult(res.outcome || res)
-          }).catch((err) => pushToast({ title: '确认失败', body: err.message }))
-        } else if (action.type === 'session-option' || action.type === 'session-text') {
-          executeAgent(action.text || answer.label || '', currentContext(), [], agentThread?.history || [], surface.waitingJob || surface.jobId || agentJobRef.current)
-        } else if (action.type === 'open-reply') {
-          setAgentReplyOpen(true)
-        } else if (action.type === 'cancel-job') {
-          api('agent.cancelJob', { id: action.jobId || jobId }).catch(() => { })
-        } else if (action.type === 'close') {
-          api('surface.close', { jobId, surfaceId: surface.id, pendingId: surface.pendingId || '' }).catch(() => { })
-        } else if (action.type === 'view-note') {
-          if (action.path) setView({ kind: 'note', path: action.path })
-        } else if (action.type === 'undo-run') {
-          api('agent.undo', { id: action.runId }).then(() => { bumpContent(); refresh() }).catch((err) => pushToast({ title: '撤销失败', body: err.message }))
-        } else if (action.type === 'retry-agent') {
-          executeAgent(action.instruction || '', action.context || currentContext(), action.images || [], action.history || [])
-        } else if (action.type === 'copy-agent-log') {
-          api('agent.log', { id: action.jobId }).then((data) => copyText(data.text || '')).then((copied) => pushToast({ title: copied ? '完整日志已复制' : '复制失败' })).catch((err) => pushToast({ title: '读取日志失败', body: err.message }))
-        } else if (action.type === 'view-capture') {
-          setView({ kind: 'diaryDoc', doc: action.diaryDoc, date: action.date, heading: headingFor(action.date) })
-        } else if (action.type === 'cancel-capture') {
-          api('capture.cancel', { id: action.captureId }).catch(() => { })
-        } else return false
-        return true
-      }
-
-      const renderSurface = (surface) => h(AgentSurfaceView, {
-          key: surface.id,
-          surface,
-          onClose: () => {
-            forgetSavedSurface(surface.id)
-            setSurfaces((prev) => prev.filter((item) => item.id !== surface.id))
-            if (surface.captureId) api('capture.answer', { id: surface.captureId, questionId: surface.id, optionId: 'cancel', label: '取消' }).catch(() => { })
-            else if (surface.waitingJob || surface.jobId || surface.kind === 'progress' || surface.kind === 'confirm') {
-              const jobId = surface.waitingJob || surface.jobId || agentJobRef.current
-              api('surface.close', { jobId, surfaceId: surface.id, pendingId: surface.pendingId || '' }).catch(() => { if (jobId) api('agent.cancelJob', { id: jobId }).catch(() => { }) })
-            } else surfaceResolvers.current.get(surface.id)?.({ optionId: 'cancel', label: '取消' })
-          },
-          onAnswer: (answer) => {
-            forgetSavedSurface(surface.id)
-            setSurfaces((prev) => prev.filter((item) => item.id !== surface.id))
-            if (runSurfaceAction(surface, answer)) return
-            if (surface.kind === 'confirm') api('surface.answer', { id: surface.waitingJob || surface.jobId, questionId: surface.id, ...answer }).then((res) => { refresh(); if (answer.optionId === 'confirm') showAgentResult(res.outcome || res) }).catch((err) => pushToast({ title: '确认失败', body: err.message }))
-            else if (surface.onSurfaceAction) surface.onSurfaceAction(answer.optionId)
-            else if (surface.captureId) api('capture.answer', { id: surface.captureId, questionId: surface.id, ...answer }).catch(() => { })
-            else if (surface.waitingJob) api('surface.answer', { id: surface.waitingJob, questionId: surface.id, ...answer }).then(() => { if (agentJobRef.current !== surface.waitingJob) pollAgentJob(surface.waitingJob) }).catch(() => { })
-            else if (surface.fromJob && answer.label) executeAgent(answer.label, currentContext(), [], agentThread?.history || [], surface.waitingJob || surface.jobId || agentJobRef.current)
-            else surfaceResolvers.current.get(surface.id)?.(answer)
-          },
-        })
-
-      const showAgentResult = (res, instruction = '', baseHistory = null, jobId = '') => {
-        const first = (res.applied || []).find((item) => item.path && !['delete', 'deleteNotebook', 'reorderNotebooks', 'reorderNotes', 'todoAdd', 'todoUpdate', 'todoDelete', 'memoCreate', 'memoUpdate', 'memoDelete', 'memoPin', 'settingsUpdate', 'setNotebookPrivate', 'setPrivacyMode', 'fileMove', 'fileCopy', 'fileDelete'].includes(item.op))
-        const options = Array.isArray(res.options) ? res.options.slice(0, 6) : []
-        const reply = String(res.reply || res.question || '')
-        const body = reply || `已应用 ${res.applied?.length || 0} 处修改`
-        const actions = []
-        if (first) actions.push({ label: '查看', primary: true, onClick: () => setView({ kind: 'note', path: first.path }) })
-        if (res.runId) actions.push({
-          label: '撤销整批',
-          onClick: async () => {
-            try {
-              await api('agent.undo', { id: res.runId })
-              bumpContent()
-              refresh()
-              pushToast({ title: '已撤销这批操作' })
-            } catch (err) {
-              pushToast({ title: '撤销失败', body: err.message })
-            }
-          },
-        })
-        let nextHistory = []
-        if (reply) {
-          const previous = Array.isArray(baseHistory) ? baseHistory : (agentThread?.history || [])
-          nextHistory = instruction ? [...previous, { role: 'user', content: instruction }] : [...previous]
-          const assistantText = options.length
-            ? `${reply}\n选项：${options.map((option) => `${option.id || ''} ${option.label}`).join('；')}`
-            : reply
-          nextHistory.push({ role: 'assistant', content: assistantText })
-          setAgentThread({ instruction: instruction || agentThread?.instruction || '', reply, history: nextHistory.slice(-8), jobId: jobId || agentThread?.jobId || '' })
+      const actOnSurface = async (card, action, text = '') => {
+        if (['reply', 'agent-answer', 'agent-followup'].includes(action.type) && card.sessionId) {
+          const input = text || action.text || action.label || ''
+          setAgentSessionDetail((prev) => prev?.id === card.sessionId ? { ...prev, turns: [...(prev.turns || []), { id: `local-${Date.now()}`, input, status: 'running' }] } : prev)
         }
-        options.forEach((option) => {
-          actions.push({
-            label: option.label,
-            title: option.description || option.label,
-            onClick: () => executeAgent(`${option.id || ''}. ${option.label}`.trim(), currentContext(), [], nextHistory, jobId || agentJobRef.current),
-          })
-        })
-        if (reply) actions.push({ label: '回复', onClick: () => setAgentReplyOpen(true) })
-        const declarative = []
-        if (first) declarative.push({ id: String(declarative.length), label: '查看', action: { type: 'view-note', path: first.path } })
-        if (res.runId) declarative.push({ id: String(declarative.length), label: '撤销整批', action: { type: 'undo-run', runId: res.runId } })
-        options.forEach((option, index) => declarative.push({ id: String(declarative.length), label: option.label, action: { type: 'session-option', text: `${option.id || ''}. ${option.label}`.trim() } }))
-        if (reply) declarative.push({ id: String(declarative.length), label: '回复', action: { type: 'open-reply' } })
-        setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'agent-result'), {
-          id: `agent-result-${Date.now()}`,
-          key: 'agent-result',
-          kind: 'agent-result',
-          jobId: jobId || agentJobRef.current,
-          type: 'toast',
-          expiresAt: Date.now() + 10 * 60 * 1000,
-          title: 'agent 处理完成',
-          body,
-          options: actions.map((action, index) => ({ id: String(index), label: action.label })),
-          actions: declarative,
-          onSurfaceAction: (id) => actions[Number(id)]?.onClick?.(),
-        }])
-        if (res.errors?.length) pushToast({ title: '有操作没成功', body: res.errors.slice(0, 5).join('；') })
-        if ((res.applied || []).some((item) => String(item.op || '').startsWith('todo'))) setTodoOpen(true)
-        if (res.remindersCreated?.length) notifyReminderCreated(res.remindersCreated)
-        const deletedCurrent = (res.applied || []).some((item) => item.op === 'delete' && view.kind === 'note' && view.path === item.path)
-        if (deletedCurrent) go({ kind: 'notebook', name: view.path.split('/')[0] })
-        bumpContent()
-        refresh()
+        const result = await surfaceCommand('surface.action', { surfaceId: card.id, actionId: action.id,
+          interactionId: card.interaction?.id, attempt: card.attempt, requestId: `${card.id}:${Date.now()}:${Math.random()}`, text })
+        if (result?.navigate) go(result.navigate.kind === 'diaryDoc' ? { ...result.navigate, heading: headingFor(result.navigate.date) } : result.navigate)
+        if (result?.clipboard) await copyText(result.clipboard)
+        if (result?.refresh) { bumpContent(); refresh() }
+        return result
       }
-
-      const isJobProgress = (item, jobId) => item.kind === 'progress' && (item.fromJob === jobId || item.jobId === jobId)
-
-      const pollAgentJob = (jobId) => {
-        if (!jobId || agentPollers.current.has(jobId)) return
-        const launchId = `agent-launch-${jobId}`
-        const timer = setInterval(async () => {
-          try {
-            const status = (await api('agent.status', { id: jobId })).job
-            setSurfaces((prev) => {
-              const hasLaunch = prev.some((item) => item.id === launchId)
-              const next = prev.filter((item) => item.id === launchId || !isJobProgress(item, jobId))
-              for (const item of status.surfaces || []) {
-                if (item.awaitResponse || item.status !== 'waiting') continue
-                if (hasLaunch && item.kind === 'progress') continue
-                const index = next.findIndex((entry) => entry.id === item.id)
-                if (index >= 0) next[index] = { ...item, fromJob: jobId }
-                else next.push({ ...item, fromJob: jobId })
-              }
-              return next
-            })
-            if (status.status === 'waiting' && status.question) {
-              const question = { ...status.question, waitingJob: jobId, kind: 'agent-wait' }
-              setSurfaces((prev) => [...prev.filter((item) => !isJobProgress(item, jobId) && !(item.kind === 'agent-wait' && item.waitingJob === jobId)), question])
-              return
-            }
-            if (status.status === 'running') return
-            clearInterval(timer); agentPollers.current.delete(jobId)
-            setSurfaces((prev) => prev.filter((item) => !isJobProgress(item, jobId) && !(item.kind === 'agent-wait' && item.waitingJob === jobId)))
-            if (status.status === 'done') {
-              try { localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }
-              const res = status.result || {}
-              if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch(() => { })
-              else showAgentResult(res)
-            } else if (status.status === 'error') {
-              try { localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }
-              const args = status.args || {}
-              setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'agent-error'), {
-                id: `agent-error-${Date.now()}`, kind: 'agent-error', type: 'toast', title: 'Agent 任务失败',
-                body: String(status.error || status.message || '任务失败'),
-                options: [{ id: '0', label: '重试' }, { id: '1', label: '复制完整日志' }],
-                actions: [
-                  { id: '0', label: '重试', action: { type: 'retry-agent', instruction: String(args.instruction || ''), context: args.context || { view: 'home' }, images: args.images || [], history: args.history || [] } },
-                  { id: '1', label: '复制完整日志', action: { type: 'copy-agent-log', jobId } },
-                ],
-              }])
-            }
-          } catch { /* ignore */ }
-        }, 1000)
-        agentPollers.current.set(jobId, timer)
-      }
-
-      const executeAgent = async (instruction, context, images = [], history = [], resumeJobId = '') => {
-        const key = `agentjob:${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
-        const launchId = `agent-launch-${resumeJobId || key}`
-        const upsert = (patch) => setToasts((prev) => {
-          const index = prev.findIndex((toast) => toast.key === key)
-          if (index === -1) return [...prev, { id: key, key, ...patch }].slice(-3)
-          const next = [...prev]
-          next[index] = { ...next[index], ...patch }
-          return next
-        })
-        const remove = () => setToasts((prev) => prev.filter((toast) => toast.key !== key))
-        const updateLaunch = (patch) => setSurfaces((prev) => {
-          const next = prev.filter((item) => item.id !== launchId)
-          next.push({ id: launchId, key, kind: 'progress', type: 'toast', title: 'Agent 正在处理', body: instruction, status: 'waiting', launch: true, ...patch })
-          return next
-        })
-        const removeLaunch = () => setSurfaces((prev) => prev.filter((item) => item.id !== launchId))
-        updateLaunch({ body: instruction })
-        let jobId = ''
-        const cancel = () => {
-          if (!jobId) return
-          api('agent.cancelJob', { id: jobId }).then(() => {
-            upsert({ title: 'agent 正在取消', body: '等这一轮结束…', actions: [] })
-          }).catch(() => { })
-        }
-        try {
-          setToasts((prev) => prev.filter((toast) => toast.title !== 'agent 没跑成' && !String(toast.body || '').includes('请求失败（405）')))
-          if (resumeJobId) {
-            const resumed = await api('agent.reply', { id: resumeJobId, text: instruction })
-            jobId = resumed.jobId || resumeJobId
-          } else {
-            const started = await api('agent.start', { instruction, context, images, history })
-            jobId = started.jobId
-          }
-          agentJobRef.current = jobId
-          // 用户刚发的指令先记进打开的会话记录，等服务端保存后再由刷新覆盖。
-          setAgentSessionDetail((prev) => {
-            if (!prev || (prev.jobId !== jobId && prev.id !== jobId)) return prev
-            const localTurn = { id: `local-${Date.now()}`, input: instruction, status: 'running', startedAt: new Date().toISOString(), tools: [] }
-            return { ...prev, status: 'running', updatedAt: new Date().toISOString(), turns: [...(prev.turns || []), localTurn] }
-          })
-          updateLaunch({ body: 'Agent 正在启动…', fromJob: jobId })
-          try { localStorage.setItem('dsan-active-agent-job', jobId) } catch { /* ignore */ }
-          while (true) {
-            if (!appMountedRef.current) return false
-            const status = (await api('agent.status', { id: jobId })).job
-            setSurfaces((prev) => {
-              const hasLaunch = prev.some((item) => item.id === launchId)
-              const next = prev.filter((item) => item.id === launchId || !isJobProgress(item, jobId))
-              for (const item of status.surfaces || []) {
-                if (item.awaitResponse || item.status !== 'waiting') continue
-                if (hasLaunch && item.kind === 'progress') continue
-                const index = next.findIndex((entry) => entry.id === item.id)
-                if (index >= 0) next[index] = { ...item, fromJob: jobId }
-                else next.push({ ...item, fromJob: jobId })
-              }
-              return next
-            })
-            if (status.status === 'running') {
-              updateLaunch({ body: status.message || 'Agent 正在处理…', fromJob: jobId })
-              await new Promise((resolve) => setTimeout(resolve, 800))
-              continue
-            }
-            if (status.status === 'waiting' && status.question) {
-              remove()
-              removeLaunch()
-              const question = { ...status.question, waitingJob: jobId, allowFreeText: status.question.allowFreeText !== false }
-              setSurfaces((prev) => [...prev.filter((item) => !isJobProgress(item, jobId) && !(item.kind === 'agent-wait' && item.waitingJob === jobId)), { ...question, kind: 'agent-wait' }])
-              await new Promise((resolve) => setTimeout(resolve, 800))
-              continue
-            }
-            removeLaunch()
-            setSurfaces((prev) => prev.filter((item) => !isJobProgress(item, jobId) && !(item.kind === 'agent-wait' && item.waitingJob === jobId)))
-            remove()
-            if (status.status === 'done') {
-              const res = status.result || {}
-              if (res.pendingId) api('review.surface', { id: res.pendingId }).then(({ surface }) => addReviewSurface(surface)).catch((err) => pushToast({ title: '审阅准备失败', body: err.message }))
-              else showAgentResult(res, instruction, history, jobId)
-              return true
-            }
-            if (status.status === 'cancelled') {
-              setSurfaces((prev) => prev.filter((item) => !(item.kind === 'agent-wait' && item.waitingJob === jobId)))
-              pushToast({ title: 'agent 已取消', body: '没有继续写入' })
-              return false
-            }
-            throw new Error(status.error || status.message || 'agent 任务失败')
-          }
-        } catch (err) {
-          remove()
-          removeLaunch()
-          const log = [
-            '随记 /agent 错误',
-            `时间：${new Date().toISOString()}`,
-            `页面：${JSON.stringify(context)}`,
-            `指令：${instruction}`,
-            `错误：${String(err?.message ?? err)}`,
-            err?.stack ? `堆栈：${err.stack}` : '',
-          ].filter(Boolean).join('\n')
-          setSurfaces((prev) => [...prev.filter((item) => item.kind !== 'agent-error'), {
-            id: `agent-error-${Date.now()}`, kind: 'agent-error', type: 'toast', title: 'Agent 任务失败',
-            body: String(err?.message ?? err),
-            options: [{ id: '0', label: '重试' }, { id: '1', label: '复制完整日志' }],
-            actions: [
-              { id: '0', label: '重试', action: { type: 'retry-agent', instruction, context, images, history } },
-              { id: '1', label: '复制完整日志', action: { type: 'copy-agent-log', jobId } },
-            ],
-          }])
-          return false
-        }
-      }
-
       const notifyReminderCreated = (list) => {
-        for (const item of list || []) {
-          pushToast({
-            title: item.kind && item.kind !== 'once' ? '周期定时提醒已创建' : '定时提醒已创建',
-            body: `${item.text}\n下一次：${fmtReminderTime(item.nextAt)}`,
-            duration: 8000,
-          })
-        }
+        if (!list?.length) return
+        notifySurface({ title: list.length === 1 ? '提醒已创建' : `已创建 ${list.length} 个提醒`,
+          body: list.map((item) => `${item.text} · ${item.kind && item.kind !== 'once' ? '周期提醒' : '单次提醒'} · ${fmtReminderTime(item.nextAt)}`).join('\n') })
       }
 
       const addCaptureFiles = async (fileList) => {
         const files = Array.from(fileList || []).filter((file) => file && file.type && file.type.startsWith('image/'))
         if (!files.length) return
         const room = 9 - captureImages.length
-        if (room <= 0) { pushToast({ title: '最多放 9 张图片' }); return }
+        if (room <= 0) { notifySurface({ title: '最多放 9 张图片' }); return }
         const accepted = files.filter((file) => file.size <= 10 * 1024 * 1024).slice(0, room)
-        if (accepted.length < files.length) pushToast({ title: '部分图片没有加入', body: '单张不能超过 10MB，最多 9 张' })
+        if (accepted.length < files.length) notifySurface({ title: '部分图片没有加入', body: '单张不能超过 10MB，最多 9 张' })
         const loaded = await Promise.all(accepted.map((file) => new Promise((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = () => resolve({ id: `${Date.now()}-${Math.random().toString(16).slice(2, 6)}`, name: file.name || '截图', dataUrl: String(reader.result || '') })
@@ -3942,92 +3364,62 @@ window.__ModuleLoader__.load({
         return paths
       }
 
+      const captureSubmitting = useRef(false)
       const submitCapture = async () => {
+        if (captureSubmitting.current) return
         const raw = captureText.trim()
         if (!raw && !captureImages.length) return
         const slash = /^\/([a-zA-Z]+)(?:\s+([\s\S]*))?$/.exec(raw)
-        let text = raw
-        if (slash) {
-          const name = slash[1].toLowerCase()
-          const rest = String(slash[2] || '').trim()
-          if (!['memo', 'todo', 'note', 'agent'].includes(name)) {
-            pushToast({ title: '不认识的指令', body: '可用：/memo /todo /note /agent' })
-            return
-          }
-          if (!rest) {
-            pushToast({ title: `/${name} 后面写点内容` })
-            return
-          }
-          if (name === 'memo') {
-            rememberCapture(raw)
-            setCaptureText('')
-            const items = rest.split('\n').map((line) => line.trim()).filter(Boolean)
-            try {
-              const created = await api('sticky.create', stickySpawnPosition())
-              await api('sticky.save', { id: created.sticky.id, items })
-              refresh()
-              pushToast({ title: '便笺已创建', body: items.join(' / ') })
-            } catch (err) { pushToast({ title: '便笺没建出来', body: err.message }) }
-            return
-          }
-          if (name === 'todo') {
-            rememberCapture(raw)
-            setCaptureText('')
-            const existing = state.todo?.items || []
-            const fresh = rest.split('\n').map((line) => line.trim()).filter(Boolean).map((line, index) => {
-              const tags = [...line.matchAll(/#([^\s#]+)/g)].map((m) => m[1]).filter(Boolean)
-              const body = line.replace(/#[^\s#]+/g, '').trim()
-              return { id: `${Date.now()}-${index}-${Math.random().toString(16).slice(2, 6)}`, text: body || line, done: false, tags, createdAt: new Date().toISOString() }
-            })
-            try {
-              const saved = await api('todo.save', { items: [...fresh, ...existing], baseVersion: state.todo?.version })
-              if (saved?.remindersCreated?.length) notifyReminderCreated(saved.remindersCreated)
-              setTodoOpen(true)
-              refresh()
-              pushToast({ title: '已加入待办', body: fresh.map((item) => item.text).join(' / ') })
-            } catch (err) { pushToast({ title: '待办没加上', body: err.message }) }
-            return
-          }
-          if (name === 'agent') {
-            try {
-              const images = await uploadCaptureImages()
-              rememberCapture(raw)
-              setCaptureText('')
-              const ok = await executeAgent(rest, currentContext(), images)
-              if (ok) setCaptureImages([])
-              else setCaptureText(rest)
-            } catch (err) {
-              pushToast({ title: '图片没传上', body: err.message })
-            }
-            return
-          }
-          text = rest
+        const name = slash ? slash[1].toLowerCase() : 'note'
+        const text = slash ? String(slash[2] || '').trim() : raw
+        if (!['memo', 'todo', 'note', 'agent'].includes(name)) {
+          notifySurface({ eventKey: `invalid-command:${name}`, title: '未知命令', body: '可用：/memo /todo /note /agent' })
+          return
         }
-
-        let images = []
-        if (captureImages.length) {
-          try {
-            images = await uploadCaptureImages()
-          } catch (err) {
-            pushToast({ title: '图片没传上', body: err.message })
-            return
-          }
+        if (slash && !text) {
+          notifySurface({ eventKey: `empty-command:${name}`, title: `请在 /${name} 后输入内容` })
+          return
         }
-        const finalText = text || '图片记录'
-        rememberCapture(raw || finalText)
-        const launchId = `capture-launch-${Date.now()}`
-        setSurfaces((prev) => [...prev, { id: launchId, kind: 'capture-launch', type: 'toast', title: '已记到日记', body: '正在归档…', status: 'waiting', createdAt: new Date().toISOString() }])
-        setTimeout(() => setSurfaces((prev) => prev.filter((item) => item.id !== launchId)), 5000)
+        captureSubmitting.current = true
+        let surfaceId = ''
+        const requestId = `submit-${Date.now()}-${Math.random().toString(16).slice(2)}`
         try {
-          const res = await api('capture', { text: finalText, images })
+          const title = name === 'memo' ? '正在创建便笺' : name === 'todo' ? '正在添加待办' : captureImages.length ? '正在上传图片' : name === 'agent' ? '正在启动任务' : '正在记录日记'
+          const created = await surfaceCommand('surface.create', { requestId, kind: name === 'note' ? 'capture' : name, source: name === 'agent' ? 'agent' : 'ui', state: 'running', title, body: '' })
+          surfaceId = created.surface.id
+          if (name === 'memo') {
+            const items = text.split('\n').map((line) => line.trim()).filter(Boolean)
+            const made = await api('sticky.create', stickySpawnPosition())
+            await api('sticky.save', { id: made.sticky.id, items })
+            await surfaceCommand('surface.update', { surfaceId, patch: { state: 'succeeded', title: '便笺已创建', body: items.join('\n') } })
+          } else if (name === 'todo') {
+            const fresh = text.split('\n').map((line) => line.trim()).filter(Boolean).map((line, index) => ({
+              id: `${Date.now()}-${index}-${Math.random().toString(16).slice(2, 6)}`,
+              text: line.replace(/#[^\s#]+/g, '').trim() || line, tags: [...line.matchAll(/#([^\s#]+)/g)].map((m) => m[1]), done: false, createdAt: new Date().toISOString(),
+            }))
+            const saved = await api('todo.save', { items: [...fresh, ...(state.todo?.items || [])], baseVersion: state.todo?.version })
+            setTodoOpen(true)
+            const reminders = saved?.remindersCreated || []
+            await surfaceCommand('surface.update', { surfaceId, patch: { state: 'succeeded', title: '待办已添加',
+              body: fresh.map((item) => item.text).join('\n') + (reminders.length ? `\n同时创建了 ${reminders.length} 个提醒。` : '') } })
+          } else {
+            const images = await uploadCaptureImages()
+            if (name === 'agent') {
+              await surfaceCommand('surface.update', { surfaceId, patch: { title: text.split('\n')[0], body: '正在启动……' } })
+              await api('agent.start', { instruction: text, context: currentContext(), images, surfaceId, requestId })
+            } else {
+              await surfaceCommand('surface.update', { surfaceId, patch: { title: '正在记录日记', body: '' } })
+              await api('capture', { text: text || '图片记录', images, surfaceId, requestId })
+            }
+            setCaptureImages([])
+          }
+          rememberCapture(raw || '图片记录')
           setCaptureText('')
-          setCaptureImages([])
-          bumpContent()
-          if (view.kind === 'diaryDoc' && view.doc === res.doc) refresh()
-          else refresh()
+          bumpContent(); refresh()
         } catch (err) {
-          pushToast({ title: '没记上', body: err.message })
-        }
+          if (surfaceId) await surfaceCommand('surface.update', { surfaceId, patch: { state: 'failed', title: '提交失败', body: err.message } }).catch(() => {})
+          else setSurfaceError(err.message)
+        } finally { captureSubmitting.current = false }
       }
 
       const stickySpawnPosition = () => {
@@ -4046,7 +3438,7 @@ window.__ModuleLoader__.load({
         try {
           await api('sticky.create', stickySpawnPosition())
           refresh()
-        } catch (err) { pushToast({ title: '便笺没建出来', body: err.message }) }
+        } catch (err) { notifySurface({ title: '创建便笺失败', body: err.message }) }
       }
 
       const fabDown = (event) => {
@@ -4074,11 +3466,11 @@ window.__ModuleLoader__.load({
           const created = await api('sticky.create', { x: 120, y: 120, w: 300, h: 220 })
           setPageSticky(created.sticky)
           refresh()
-        } catch (err) { pushToast({ title: '便笺没建出来', body: err.message }) }
+        } catch (err) { notifySurface({ title: '创建便笺失败', body: err.message }) }
       }
 
       if (!state) return h('div', { className: 'dsan' }, styleTag(), h('div', { className: 'dsan-empty' }, '正在打开随记…'))
-      if (state.configured === false) return h('div', { className: 'dsan' }, styleTag(), h(Setup, { ctx, onDone: refresh, pushToast }))
+      if (state.configured === false) return h('div', { className: 'dsan' }, styleTag(), h(Setup, { ctx, onDone: refresh, notifySurface }))
 
       const openNotebook = (name) => go({ kind: 'notebook', name })
       const openNote = (path) => go({ kind: 'note', path })
@@ -4088,7 +3480,7 @@ window.__ModuleLoader__.load({
       let content = null
       if (view.kind === 'home') {
         content = h(HomeView, {
-          state, refresh, pushToast, todoOpen, hiddenStickies, privacyMode,
+          state, refresh, notifySurface, todoOpen, hiddenStickies, privacyMode,
           onPrivacyModeChange: (next) => {
             setPrivacyMode(next)
             api('ui.save', { privacyMode: next }).catch(() => { })
@@ -4099,26 +3491,26 @@ window.__ModuleLoader__.load({
         })
       } else if (view.kind === 'notebook') {
         content = h(NotebookView, {
-          state, name: view.name, refresh, pushToast, nonce: contentNonce,
+          state, name: view.name, refresh, notifySurface, nonce: contentNonce,
           onBack: () => go({ kind: 'home' }),
           onOpenNote: openNote,
           onEdit: (notebook) => setModal({ kind: 'editNotebook', notebook }),
         })
       } else if (view.kind === 'note') {
         content = h(NoteView, {
-          state, path: view.path, refresh, pushToast, nonce: contentNonce,
+          state, path: view.path, refresh, notifySurface, nonce: contentNonce,
           onBack: () => { const nb = view.path.split('/')[0]; go({ kind: 'notebook', name: nb }) },
           onOpenNote: openNote,
         })
       } else if (view.kind === 'diary') {
         content = h(DiaryView, {
-          state, pushToast,
+          state, notifySurface,
           onOpenDoc: (doc, date, heading) => { if (!doc) { refresh(); return } openDiaryDoc(doc, date, heading) },
           onSettings: () => setDiarySettings(true),
         })
       } else if (view.kind === 'diaryDoc') {
         content = h(DiaryDocView, {
-          state, doc: view.doc, date: view.date, heading: view.heading, refresh, pushToast, nonce: contentNonce,
+          state, doc: view.doc, date: view.date, heading: view.heading, refresh, notifySurface, nonce: contentNonce,
           onBack: () => go({ kind: 'diary' }),
           onOpenNote: openNote,
         })
@@ -4289,6 +3681,7 @@ window.__ModuleLoader__.load({
             },
               h('span', { className: 'nm' }, `/${cmd.name}`),
               h('span', { className: 'ds' }, cmd.desc)))) : null,
+          surfaceError ? h('div', { className: 'dsan-set-hint', role: 'status' }, `提示同步暂不可用，正在重试。${surfaceError}`) : null,
           captureImages.length ? h('div', { className: 'dsan-attachments' },
             captureImages.map((image, index) => h('div', {
               key: image.id, className: 'dsan-attachment', title: image.name,
@@ -4309,11 +3702,16 @@ window.__ModuleLoader__.load({
             item.onClick
               ? h('a', { onClick: item.onClick }, item.label)
               : h('span', { className: 'cur' }, item.label)))) : null) : null,
-        h('div', { className: 'dsan-body' }, content),
+        h('div', { className: 'dsan-content-area', ref: contentAreaRef },
+          h('div', { className: 'dsan-body' }, content),
+          h('div', { className: 'dsan-surface-stack', ref: surfaceStackRef },
+            surfaces.map((surface) => h(SurfaceCard, { key: surface.id, surface,
+              compact: surfaces.some((item) => item.size === 'large') && surface.size !== 'large',
+              command: surfaceCommand, onAction: actOnSurface })))),
         (view.kind === 'home' && state.configured !== false) ? h('div', { className: 'dsan-todo-dock', style: { top: captureFocused ? 144 : 104 } },
           h(TodoCard, {
             todo: state.todo, onSave: refresh, expanded: todoOpen, onExpandChange: setTodoOpen,
-            hideDone: todoHideDone, pushToast,
+            hideDone: todoHideDone, notifySurface,
             onReminderCreated: notifyReminderCreated,
             onHideDoneChange: (next) => {
               setTodoHideDone(next)
@@ -4355,10 +3753,6 @@ window.__ModuleLoader__.load({
             },
             scale: uiScale,
           })) : null,
-        h('div', { className: 'dsan-surface-stack dsan-unified-stack' }, ...[
-          ...toasts.map((toast) => ({ at: toast.at || 0, node: h(ToastCard, { key: toast.id, toast, dismiss }) })),
-          ...surfaces.filter((surface) => surface.type === 'toast').map((surface) => ({ at: Number.isFinite(Date.parse(surface.createdAt)) ? Date.parse(surface.createdAt) : Date.now(), node: renderSurface(surface) })),
-        ].sort((a, b) => a.at - b.at).slice(-3).map((item) => item.node)),
         dueReminders.length ? h('div', { className: 'dsan-reminder-stack' },
           dueReminders.map((reminder) => h(ReminderCard, {
             key: reminder.key, item: reminder,
@@ -4367,23 +3761,14 @@ window.__ModuleLoader__.load({
             onAutoClose: () => closeReminderCard(reminder),
             onStopPeriodic: () => stopPeriodicReminder(reminder),
           }))) : null,
-        modal?.kind === 'newNotebook' ? h(NotebookModal, { onClose: () => setModal(null), pushToast, refresh, scale: uiScale }) : null,
+        modal?.kind === 'newNotebook' ? h(NotebookModal, { onClose: () => setModal(null), notifySurface, refresh, scale: uiScale }) : null,
         modal?.kind === 'editNotebook' ? h(NotebookModal, {
           initial: modal.notebook,
           onClose: () => setModal(null),
           onSaved: (notebook) => { if (notebook?.name) setView({ kind: 'notebook', name: notebook.name }); refresh() },
           onDeleted: () => { setModal(null); setView({ kind: 'home' }); refresh() },
-          pushToast,
+          notifySurface,
           scale: uiScale,
-        }) : null,
-        ...surfaces.filter((surface) => surface.type !== 'toast').map(renderSurface),
-        agentReplyOpen && agentThread ? h(AgentReplyModal, {
-          thread: agentThread,
-          onClose: () => setAgentReplyOpen(false),
-          onSend: (text) => {
-            setAgentReplyOpen(false)
-            executeAgent(text, currentContext(), [], agentThread?.history || [], agentThread?.jobId || agentJobRef.current)
-          },
         }) : null,
         agentSessionOpen ? h(Modal, { title: 'agent 会话', wide: true, onClose: () => setAgentSessionOpen(false) },
           h('div', { style: { display: 'flex', gap: 12, minHeight: 240 } },
@@ -4419,15 +3804,14 @@ window.__ModuleLoader__.load({
                 agentSessionDetail.status === 'waiting' && (agentSessionDetail.surfaces || []).some((surface) => surface.status === 'waiting') ? h('button', {
                   type: 'button', className: 'dsan-btn', style: { marginTop: 12 },
                   onClick: () => {
-                    const restored = (agentSessionDetail.surfaces || []).filter((surface) => surface.status === 'waiting').map((surface) => ({ ...surface, kind: 'agent-wait', waitingJob: agentSessionDetail.jobId }))
-                    setSurfaces((prev) => [...prev.filter((item) => !restored.some((surface) => surface.id === item.id)), ...restored])
+                    refreshSurfaces().catch(() => {})
                     setAgentSessionOpen(false)
                   },
                 }, '继续这个会话') : null,
               ] : h('div', { className: 'dsan-set-hint' }, '选择左侧会话查看轮次')),
           )) : null,
-        settings ? h(SettingsModal, { state, ctx, pushToast, onClose: () => setSettings(false), refresh, onReviewPending: (surface) => setSurfaces((prev) => [...prev.filter((item) => item.pendingId !== surface.pendingId), surface]), onRootChanged: () => { setSurfaces([]); try { localStorage.removeItem('dsan-agent-surfaces'); localStorage.removeItem('dsan-active-agent-job') } catch { /* ignore */ }; go({ kind: 'home' }) } }) : null,
-        diarySettings ? h(DiaryCoverModal, { state, pushToast, refresh, onClose: () => setDiarySettings(false) }) : null,
+        settings ? h(SettingsModal, { state, ctx, notifySurface, onClose: () => setSettings(false), refresh, onRootChanged: () => { setSurfaceQueue([]); go({ kind: 'home' }) } }) : null,
+        diarySettings ? h(DiaryCoverModal, { state, notifySurface, refresh, onClose: () => setDiarySettings(false) }) : null,
 )
     }
 
